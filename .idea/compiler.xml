@@ -11,9 +11,11 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <module name="irpc-framework-core" />
-        <module name="CherryRPC" />
       </profile>
     </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="CherryRPC" target="1.8" />
+    </bytecodeTargetLevel>
   </component>
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">

@@ -1,5 +1,8 @@
 package config;
 
-public class ServerConfig {
+import lombok.Data;
 
+@Data
+public class ServerConfig {
+    private Integer port;
 }

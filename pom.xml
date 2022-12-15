@@ -9,8 +9,11 @@
   <url>http://maven.apache.org</url>
 
   <modules>
-    <module>predemo</module>
     <module>irpc-framework-core</module>
   </modules>
+
+
+
+  <description>一款轻量级的rpc框架</description>
 
 </project>

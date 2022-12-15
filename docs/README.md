@@ -124,9 +124,37 @@ struct pollfd{
               因此效率要比 LT 模式高。只支持 No-Blocking，以避免由于一个文件句柄的阻塞读/阻塞写操作把处理多个文件描述符的任务饿死。
 
 # 开发实战一：代理层（Stub）
+基于Netty搭建了一套简单的服务端和客户端通信模型。
+![img_11.png](img_11.png)
 
+**开发图中stub处理的逻辑：**
+
+**【通过自定义协议体RpcProtocol的方式来解决网络粘包和拆包的问题。】**
+- RpcEncoder 编码器
+  - 【2字节的magic number + 包体的4个字节 + content字节数据】直接塞到ByteBuf中进行发送
+- RpcDecoder 解码器
+  - 服务器不断将收到的客户端的字节流数据放到ByteBuf这个字节数组容器中，
+      * 考虑到有粘包(多个包一起发送了)和半包(1个包被分成了多部分发送)，需要记录初始的readerIndex，
+        * 后面判断如果解析不出来一个完整的数据包，则读取指针归位即可，没有收到一个完整的数据包时，下一个ServerHandler中的Object msg也不会有东西。
+        * 否则就是截取出一个完整的客户端数据包，收到了一个完整的数据包，则强转为RpcProtocol，就可以进行业务处理了。同时移动了readerIndex指针，等待不断地收取数据截取下一个数据包。
+
+- Server
+    1. 注入配置类，设置端口号
+    2. 注册服务，注入实现类：将注册的对象放在一个共享MAP集合（缓存）中统一管理
+    3. 启动服务：
+        - boostrap设置bossGroup、workerGroup
+        - 设置通道为非阻塞通道
+        - 初始化provider，管道中加入RpcEncoder、RpcDecoder、ServerHandler
+- Client 
+  1. 注入配置类，设置端口号
+  2. 发送服务请求：
+     1. 管道初始化编解码器和客户端响应类
+     2. 链接netty客户端
+     3. 注入代理工厂
+        1. 代理实现类1： `JDKClientInvocationHandler`： 注入一个uuid，对每一次的请求都做单独区分；将请求的参数放入到发送队列中
+        2. 代理实现类2：`JavassistInvocationHandler`
 
 # Reference
-1. 本笔记（包括笔记中的多数图片）总结自[Java开发者的RPC实战课](https://juejin.cn/book/7047357110337667076/section/7047522878673125415?enter_from=course_center)
+1. 本笔记（包括笔记中的多数图片）总结自[Java开发者的RPC实战课](https://juejin.cn/book/7047357110337667076/section/7047522878673125415?enter_from=course_center)及其评论区
 【侵删】
 2. [select/poll/epoll模型视频讲解](https://www.bilibili.com/video/BV1qJ411w7du/?spm_id_from=333.337.search-card.all.click&vd_source=4e49ce85218facdc8b33777e905fe1dc)
