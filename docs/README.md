@@ -151,8 +151,20 @@ struct pollfd{
      1. 管道初始化编解码器和客户端响应类
      2. 链接netty客户端
      3. 注入代理工厂
-        1. 代理实现类1： `JDKClientInvocationHandler`： 注入一个uuid，对每一次的请求都做单独区分；将请求的参数放入到发送队列中
-        2. 代理实现类2：`JavassistInvocationHandler`
+        1.  `JDKClientInvocationHandler`： 注入一个uuid，对每一次的请求都做单独区分；将请求的参数放入到发送队列中
+        2.  `JavassistInvocationHandler`
+
+## 整体流程：
+1. Server启动，将服务注册到服务器的PROVIDER_CLASS_MAP中统一管理
+2. Client启动，注入代理工厂（代理工厂根据配置信息找到对应的代理工厂实现类xxxProxyFactory）
+3. Client调用get方法，向代理工厂传入需要的Service接口，创建出一个动态代理对象（当调用service的方法时，就会调用代理对象的invoke方法）。
+4. Client调用service接口方法service.methodXX(args)，代理对象的invocationHandler执行invoke方法， 将传来的参数args包装进RpcInvocation里，设置一个标识请求的UUID，然后将<UUID,NULL>放入响应map里等待回复。 再将请求参数放入到发送队列。
+5. Client进入阻塞等待：RESP_MAP.get()，RESP_MAP是一个ConcurrentHashMap。
+6. 发送队列是一个阻塞队列，当其非空时会唤醒Client的异步阻塞线程，从发送队列中取出一个RpcInvocation，包装成RpcProtocol，通过netty通道发送到服务端。
+7. Server的Decoder接收到数据，将其解码为RpcProtocol格式的消息，传送给ServerHandler，ServerHandler再从中获得RpcInvocation（`rpcProtocol.getContent()`）。
+8. Server获取RpcInvocation中所需的服务名称和所需方法，通过反射，找到所需方法，执行目标方法（同样是调用方法对象的invoke方法）并返回对应值。
+9. Server获得目标方法的返回值后，将其设置进RpcInvocation的response里，再次包装为RpcProtocol，写出通道，交给代理类的Encoder，编码后发还给Client。
+10. Client在规定时间内接收到数据（RESP_MAP中可以取出数据了），如果根据对应uuid找到的数据是RpcInvocation实例，将其强转成RpcInvocation并返回其中的response。
 
 # 4. 开发实战二： 注册中心的接入与实现
 

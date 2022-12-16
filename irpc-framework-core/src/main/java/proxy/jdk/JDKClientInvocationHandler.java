@@ -12,6 +12,9 @@ import static common.cache.CommonClientCache.RESP_MAP;
 import static common.cache.CommonClientCache.SEND_QUEUE;
 
 /**
+ * 每一个动态代理类都必须要实现InvocationHandler这个接口，
+ * 并且每个代理类的实例都关联到了一个handler，
+ * 当我们通过代理对象调用一个方法的时候，这个方法的调用就会被转发为由InvocationHandler这个接口的 invoke 方法来进行调用。
  * @Author : Ruoyi Chen
  * @create 2022/12/15 17:32
  */
