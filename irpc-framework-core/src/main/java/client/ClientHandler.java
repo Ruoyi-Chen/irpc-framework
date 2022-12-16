@@ -1,4 +1,4 @@
-package common.client;
+package client;
 
 import com.alibaba.fastjson.JSON;
 import common.protocol.RpcInvocation;
@@ -7,6 +7,7 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.util.ReferenceCountUtil;
+import lombok.extern.slf4j.Slf4j;
 
 import static common.cache.CommonClientCache.RESP_MAP;
 
@@ -14,6 +15,7 @@ import static common.cache.CommonClientCache.RESP_MAP;
  * @Author : Ruoyi Chen
  * @create 2022/12/15 17:08
  */
+@Slf4j
 public class ClientHandler extends ChannelInboundHandlerAdapter {
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {

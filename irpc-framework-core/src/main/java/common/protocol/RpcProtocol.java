@@ -3,10 +3,10 @@ package common.protocol;
 import lombok.Data;
 
 import java.io.Serializable;
+import java.util.Arrays;
 
 import static common.constants.RpcConstants.MAGIC_NUMBER;
 
-@Data
 public class RpcProtocol implements Serializable {
     /**
      * serialVersionUID作用是序列化时保持版本的兼容性，即在版本升级时反序列化仍保持对象的唯一性。
@@ -40,8 +40,35 @@ public class RpcProtocol implements Serializable {
         this.content = content;
     }
 
-    public RpcProtocol(String str) {
-        this.contentLength = content.length;
-        this.content = str.getBytes();
+    public short getMagicNumber() {
+        return magicNumber;
+    }
+
+    public void setMagicNumber(short magicNumber) {
+        this.magicNumber = magicNumber;
+    }
+
+    public int getContentLength() {
+        return contentLength;
+    }
+
+    public void setContentLength(int contentLength) {
+        this.contentLength = contentLength;
+    }
+
+    public byte[] getContent() {
+        return content;
+    }
+
+    public void setContent(byte[] content) {
+        this.content = content;
+    }
+
+    @Override
+    public String toString() {
+        return "RpcProtocol{" +
+                "contentLength=" + contentLength +
+                ", content=" + Arrays.toString(content) +
+                '}';
     }
 }

@@ -18,7 +18,7 @@ public class Server {
         EventLoopGroup bossGroup = new NioEventLoopGroup();
         EventLoopGroup workGroup = new NioEventLoopGroup();
 
-        //2. 通过辅助类去构造server/client
+        //2. 通过辅助类去构造server/org.idea.irpc.framework.core.client
         ServerBootstrap b = new ServerBootstrap();
 
         //3. 进行Nio Server的基础配置

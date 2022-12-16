@@ -3,6 +3,7 @@ package server;
 import com.alibaba.fastjson.JSON;
 import common.protocol.RpcInvocation;
 import common.protocol.RpcProtocol;
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 
@@ -39,10 +40,23 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
                     method.invoke(aimService, rpcInvocation.getArgs());
                 } else {
                     result = method.invoke(aimService, rpcInvocation.getArgs());
+
                 }
                 // 找到了要实现的方法，就可以结束了
                 break;
             }
+        }
+        rpcInvocation.setResponse(result);
+        RpcProtocol respRpcProtocol = new RpcProtocol(JSON.toJSONString(rpcInvocation).getBytes());
+        ctx.writeAndFlush(respRpcProtocol);
+    }
+
+    @Override
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
+        cause.printStackTrace();
+        Channel channel = ctx.channel();
+        if (channel.isActive()) {
+            ctx.close();
         }
     }
 }

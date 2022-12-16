@@ -1,7 +1,7 @@
 package proxy.jdk;
 
 import common.protocol.RpcInvocation;
-import org.apache.commons.beanutils.BeanUtils;
+import lombok.extern.slf4j.Slf4j;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
@@ -15,9 +15,9 @@ import static common.cache.CommonClientCache.SEND_QUEUE;
  * @Author : Ruoyi Chen
  * @create 2022/12/15 17:32
  */
+@Slf4j
 public class JDKClientInvocationHandler implements InvocationHandler {
     private final static Object OBJECT = new Object();
-    private final static long TIMEOUT = 3 * 1000;
     private Class<?> clazz;
     public JDKClientInvocationHandler(Class<?> clazz) {
         this.clazz = clazz;
@@ -40,12 +40,13 @@ public class JDKClientInvocationHandler implements InvocationHandler {
 
         // 将请求参数放入到发送队列
         SEND_QUEUE.add(rpcInvocation);
-        long beginTime = System.currentTimeMillis();
+        log.info("Sending: {}", rpcInvocation);
         // 客户端请求超时的判断依据
-        while (System.currentTimeMillis() - beginTime < TIMEOUT) {
-            Object obj = RESP_MAP.get(rpcInvocation.getUuid());
-            if (obj instanceof RpcInvocation) {
-                return ((RpcInvocation) obj).getResponse();
+        long beginTime = System.currentTimeMillis();
+        while (System.currentTimeMillis() - beginTime < 3*1000) {
+            Object object = RESP_MAP.get(rpcInvocation.getUuid());
+            if (object instanceof RpcInvocation) {
+                return ((RpcInvocation)object).getResponse();
             }
         }
         throw new TimeoutException("client wait server's response timeout!");

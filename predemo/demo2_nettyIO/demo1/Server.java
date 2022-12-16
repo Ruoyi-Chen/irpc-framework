@@ -44,7 +44,7 @@ public class Server {
             }
         });
         bootstrap.bind(9090).sync();
-        System.out.println("server is open");
+        System.out.println("org.idea.irpc.framework.core.server is open");
     }
 }
 

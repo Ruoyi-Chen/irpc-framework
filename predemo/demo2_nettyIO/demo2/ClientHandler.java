@@ -13,7 +13,7 @@ public class ClientHandler extends ChannelInboundHandlerAdapter {
      */
     @Override
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
-        System.err.println("client channel active..");
+        System.err.println("org.idea.irpc.framework.core.client channel active..");
     }
 
     /**

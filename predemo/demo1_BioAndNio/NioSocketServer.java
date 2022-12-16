@@ -86,7 +86,7 @@ public class NioSocketServer extends Thread {
                 byteBuffer.flip();
                 byte[] byteArray = new byte[byteBuffer.limit()];
                 byteBuffer.get(byteArray);
-                System.out.println("NioSocketServer receive from client:" + new String(byteArray,0,len));
+                System.out.println("NioSocketServer receive from org.idea.irpc.framework.core.client:" + new String(byteArray,0,len));
                 selectionKey.interestOps(SelectionKey.OP_READ);
             }
         } catch (Exception e) {

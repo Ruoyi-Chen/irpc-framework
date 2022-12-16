@@ -10,6 +10,7 @@
 
   <modules>
     <module>irpc-framework-core</module>
+    <module>irpc-framework-interface</module>
   </modules>
 
 

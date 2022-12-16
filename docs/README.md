@@ -25,11 +25,11 @@ public class Client {
     public static void main(String[] args) {
         //调用一次远程服务
         // 1. 确定发给哪个服务器
-        Server server = new Server("127.0.0.1",9999);
+        Server org.idea.irpc.framework.core.server = new Server("127.0.0.1",9999);
         // 2. 与之建立连接
-        server.doConnect();
+        org.idea.irpc.framework.core.server.doConnect();
         // 3. 服务器发送响应数据
-        Object sendResponse = server.doRef("sendSms","这是一条短信信息",10001);
+        Object sendResponse = org.idea.irpc.framework.core.server.doRef("sendSms","这是一条短信信息",10001);
         System.out.println(sendResponse);
     }
     
@@ -40,7 +40,7 @@ public class Client {
 
 - request：发送请求的客户端。
 - provider：服务提供者。
-- proxy：代理，使用代理模式，设置代理服务器，作为一个中介，降低系统耦合度。代理收到客户端发来的请求，转发给服务提供者。
+- org.idea.irpc.framework.core.proxy：代理，使用代理模式，设置代理服务器，作为一个中介，降低系统耦合度。代理收到客户端发来的请求，转发给服务提供者。
 - router：路由器，路由层根据内部规则确定将不同请求发给不同的服务提供者。
 - protocol：协议层，router计算好需要调用的服务提供者的具体信息，将对应的地址信息、请求参数传输给protocol层，protocol层将数据封装成对应的协议体 -> 序列化 -> 传输给目标机器。
 - filters：使用责任链模式，实现可插拔式组件设计与开发。
@@ -48,7 +48,7 @@ public class Client {
 - tolerant：容错层，出现异常时 统一交给容错层进行处理（超时重试/快速失败...）
 - ThreadPool：服务器线程池，同步转异步处理。
 - Spring Controller：接入层，接入到实际开发的项目中。
-- common：公共层（图中没有），主要存放一些通用配置，工具类，缓存等信息。
+- org.idea.irpc.framework.core.common：公共层（图中没有），主要存放一些通用配置，工具类，缓存等信息。
 
 # 2. 【前置知识】网络通讯模型核心
 ## 2.1 BIO技术(阻塞IO)
@@ -153,6 +153,8 @@ struct pollfd{
      3. 注入代理工厂
         1. 代理实现类1： `JDKClientInvocationHandler`： 注入一个uuid，对每一次的请求都做单独区分；将请求的参数放入到发送队列中
         2. 代理实现类2：`JavassistInvocationHandler`
+
+# 4. 开发实战二： 注册中心的接入与实现
 
 # Reference
 1. 本笔记（包括笔记中的多数图片）总结自[Java开发者的RPC实战课](https://juejin.cn/book/7047357110337667076/section/7047522878673125415?enter_from=course_center)及其评论区

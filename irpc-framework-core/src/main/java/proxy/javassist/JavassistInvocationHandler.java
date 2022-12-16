@@ -36,12 +36,12 @@ public class JavassistInvocationHandler implements InvocationHandler {
         SEND_QUEUE.add(rpcInvocation);
         long beginTime = System.currentTimeMillis();
         //如果请求数据在指定时间内返回则返回给客户端调用方
-        while (System.currentTimeMillis() - beginTime < 3*1000) {
+        while (System.currentTimeMillis() - beginTime < 3*10000) {
             Object object = RESP_MAP.get(rpcInvocation.getUuid());
             if (object instanceof RpcInvocation) {
                 return ((RpcInvocation)object).getResponse();
             }
         }
-        throw new TimeoutException("client wait server's response timeout!");
+        throw new TimeoutException("org.idea.irpc.framework.core.client wait org.idea.irpc.framework.core.server's response timeout!");
     }
 }

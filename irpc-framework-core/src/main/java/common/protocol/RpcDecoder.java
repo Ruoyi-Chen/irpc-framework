@@ -1,13 +1,11 @@
 package common.protocol;
 
-import com.sun.org.apache.bcel.internal.generic.BREAKPOINT;
+import common.constants.RpcConstants;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
 
 import java.util.List;
-
-import static common.constants.RpcConstants.MAGIC_NUMBER;
 
 /**
  * RPC解码器
@@ -49,7 +47,7 @@ public class RpcDecoder extends ByteToMessageDecoder {
                 byteBuf.markReaderIndex();
                 // 读一个short，这里对应了RpcProtocol的魔数
                 // 如果魔数对不上，说明是非法客户端发来的数据包，直接把channel关了
-                if (byteBuf.readShort() == MAGIC_NUMBER) {
+                if (byteBuf.readShort() == RpcConstants.MAGIC_NUMBER) {
                     break;
                 } else {
                     ctx.close();

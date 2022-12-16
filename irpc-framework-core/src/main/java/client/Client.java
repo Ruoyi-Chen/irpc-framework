@@ -1,11 +1,10 @@
-package common.client;
+package client;
 
 import com.alibaba.fastjson.JSON;
 import common.protocol.RpcDecoder;
 import common.protocol.RpcEncoder;
 import common.protocol.RpcInvocation;
 import common.protocol.RpcProtocol;
-import config.ClientConfig;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInitializer;
@@ -15,9 +14,10 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
+import proxy.javassist.JavassistProxyFactory;
 import proxy.jdk.JDKProxyFactory;
-import service.DataService;
-
+import org.idea.irpc.framework.interfaces.DataService;
+import config.ClientConfig;
 import static common.cache.CommonClientCache.SEND_QUEUE;
 
 /**
@@ -30,10 +30,18 @@ import static common.cache.CommonClientCache.SEND_QUEUE;
  * @Author : Ruoyi Chen
  * @create 2022/12/15 16:40
  */
-@Data
 @Slf4j
 public class Client {
     private ClientConfig clientConfig;
+
+    public ClientConfig getClientConfig() {
+        return clientConfig;
+    }
+
+    public void setClientConfig(ClientConfig clientConfig) {
+        this.clientConfig = clientConfig;
+    }
+
 
     public static EventLoopGroup clientGroup = new NioEventLoopGroup();
 
@@ -41,7 +49,7 @@ public class Client {
         // 1. 初始化客户端，配置参数
         Client client = new Client();
         ClientConfig clientConfig = new ClientConfig();
-        clientConfig.setPort(9090);
+        clientConfig.setPort(9091);
         clientConfig.setServerAddr("localhost");
         client.setClientConfig(clientConfig);
         // 2. 启动客户端
@@ -49,8 +57,9 @@ public class Client {
         DataService dataService = rpcReference.get(DataService.class);
 
         for (int i = 0; i < 100; i++) {
-            String result = dataService.sendData("test" + i);
-            log.info("客户端发送数据--> " + result);
+            Thread.sleep(100);
+            String result = dataService.sendData("test");
+            log.info("客户端收到结果--> " + result);
         }
     }
 
@@ -71,6 +80,7 @@ public class Client {
         // 常规地连接netty服务端
         ChannelFuture channelFuture = bootstrap.connect(clientConfig.getServerAddr(), clientConfig.getPort()).sync();
         log.info("====== Client 服务启动 ======");
+        this.startClient(channelFuture);
         // 注入一个代理工厂
         RpcReference rpcReference = new RpcReference(new JDKProxyFactory());
         return rpcReference;
@@ -102,7 +112,7 @@ public class Client {
                     RpcInvocation data = SEND_QUEUE.take();
                     // 将RpcInvocation封装到RpcProtocol对象中，发送给服务端，这里正好对应了ServerHandler
                     String json = JSON.toJSONString(data);
-                    RpcProtocol rpcProtocol = new RpcProtocol(json);
+                    RpcProtocol rpcProtocol = new RpcProtocol(json.getBytes());
 
                     // netty的通道负责发送数据到服务端
                     channelFuture.channel().writeAndFlush(rpcProtocol);

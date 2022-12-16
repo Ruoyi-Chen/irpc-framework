@@ -13,7 +13,7 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
      */
     @Override
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
-        System.err.println("server channel active..");
+        System.err.println("org.idea.irpc.framework.core.server channel active..");
     }
 
     /**

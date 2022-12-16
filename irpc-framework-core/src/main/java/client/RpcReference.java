@@ -1,6 +1,5 @@
-package common.client;
+package client;
 
-import lombok.Data;
 import proxy.ProxyFactory;
 
 /**

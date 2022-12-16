@@ -1,7 +1,7 @@
-package service.impl;
+package server;
 
 import lombok.extern.slf4j.Slf4j;
-import service.DataService;
+import org.idea.irpc.framework.interfaces.DataService;
 
 import java.util.ArrayList;
 import java.util.List;
