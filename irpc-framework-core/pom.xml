@@ -9,6 +9,18 @@
     <artifactId>irpc-framework-core</artifactId>
     <name>Archetype - irpc-framework-core</name>
     <url>http://maven.apache.org</url>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <source>8</source>
+                    <target>8</target>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 
     <properties>
         <netty.version>4.1.6.Final</netty.version>
@@ -17,6 +29,9 @@
         <jboss-marshalling-serial.version>1.4.11.Final</jboss-marshalling-serial.version>
         <slf4j-api.version>1.7.13</slf4j-api.version>
         <javassist.version>3.21.0-GA</javassist.version>
+        <zookeeper.version>3.4.14</zookeeper.version>
+        <zkClient.version>0.7</zkClient.version>
+        <curator.version>2.12.0</curator.version>
     </properties>
 
 
@@ -60,7 +75,7 @@
             <version>${jboss-marshalling-serial.version}</version>
         </dependency>
 
-<!--        lombok-->
+        <!--        lombok-->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
@@ -78,6 +93,26 @@
             <groupId>commons-beanutils</groupId>
             <artifactId>commons-beanutils</artifactId>
             <version>1.9.4</version>
+        </dependency>
+
+        <!--        注册中心层 -->
+        <!--        zookeeper-->
+        <dependency>
+            <groupId>org.apache.curator</groupId>
+            <artifactId>curator-framework</artifactId>
+            <version>${curator.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.zookeeper</groupId>
+            <artifactId>zookeeper</artifactId>
+            <version>${zookeeper.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.101tec</groupId>
+            <artifactId>zkclient</artifactId>
+            <version>${zkClient.version}</version>
         </dependency>
 
         <dependency>

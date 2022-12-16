@@ -1,5 +1,7 @@
 package org.idea.irpc.framework.interfaces;
 
+import org.idea.irpc.framework.core.server.Server;
+
 /**
  * @Author linhao
  * @Date created in 5:04 下午 2021/12/5
