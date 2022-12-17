@@ -65,7 +65,9 @@ public class CuratorZookeeperClient extends AbstractZookeeperClient {
     @Override
     public List<String> getChildrenData(String path) {
         try {
-            client.getChildren().forPath(path);
+            // /irpc/org.idea.irpc.framework.interfaces.DataService/provider
+            List<String> childrenData = client.getChildren().forPath(path);
+            return childrenData;
         } catch (KeeperException.NoNodeException e) {
             return null;
         } catch (Exception e) {

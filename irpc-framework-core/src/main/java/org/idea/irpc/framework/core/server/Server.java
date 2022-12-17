@@ -2,6 +2,8 @@ package org.idea.irpc.framework.core.server;
 
 import org.idea.irpc.framework.core.common.protocol.RpcDecoder;
 import org.idea.irpc.framework.core.common.protocol.RpcEncoder;
+import org.idea.irpc.framework.core.common.utils.CommonUtils;
+import org.idea.irpc.framework.core.config.PropertiesBootstrap;
 import org.idea.irpc.framework.core.config.ServerConfig;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelInitializer;
@@ -11,13 +13,19 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import lombok.extern.slf4j.Slf4j;
+import org.idea.irpc.framework.core.registry.RegistryService;
+import org.idea.irpc.framework.core.registry.URL;
+import org.idea.irpc.framework.core.registry.zookeeper.ZookeeperRegister;
 
 import static org.idea.irpc.framework.core.common.cache.CommonServerCache.PROVIDER_CLASS_MAP;
+import static org.idea.irpc.framework.core.common.cache.CommonServerCache.PROVIDER_URL_SET;
 
 @Slf4j
 public class Server {
 
     private ServerConfig serverConfig;
+
+    private RegistryService registryService;
 
     public ServerConfig getServerConfig() {
         return serverConfig;
@@ -49,15 +57,50 @@ public class Server {
         Server server = new Server();
 
         // 2. 配置server
-        ServerConfig serverConfig = new ServerConfig();
-        serverConfig.setPort(9091);
-        server.setServerConfig(serverConfig);
+//        ServerConfig serverConfig = new ServerConfig();
+//        serverConfig.setPort(9091);
+//        server.setServerConfig(serverConfig);
+        server.initServerConfig();
 
-        // 3. 注册server服务
-        server.registyService(new DataServiceImpl());
+//        // 3. 注册server服务
+//        server.registyService(new DataServiceImpl());
+
+        // 3. 向外暴露服务
+        server.exportService(new DataServiceImpl());
 
         // 4. 启动应用
         server.startApplication();
+    }
+
+    private void exportService(Object serviceBean) {
+        if (serviceBean.getClass().getInterfaces().length == 0) {
+            throw new RuntimeException("service must had interfaces!");
+        }
+        Class<?>[] interfaces = serviceBean.getClass().getInterfaces();
+        if (interfaces.length > 1) {
+            throw new RuntimeException("service must only had one interface");
+        }
+        if (registryService == null) {
+            registryService = new ZookeeperRegister(serverConfig.getRegisterAddr());
+        }
+
+        // 默认选择该对象的第一个实现接口
+        Class<?> interfaceClass = interfaces[0];
+        PROVIDER_CLASS_MAP.put(interfaceClass.getName(), serviceBean);
+
+        URL url = new URL();
+        url.setServiceName(interfaceClass.getName());
+        url.setApplicationName(serverConfig.getApplicationName());
+        url.addParameter("host", CommonUtils.getIpAddress());
+        url.addParameter("port", String.valueOf(serverConfig.getServerPort()));
+        PROVIDER_URL_SET.add(url);
+    }
+
+
+
+    private void initServerConfig() {
+        ServerConfig serverConfig = PropertiesBootstrap.loadServerConfigFromLocal();
+        this.setServerConfig(serverConfig);
     }
 
     /**
@@ -111,6 +154,27 @@ public class Server {
                 ch.pipeline().addLast(new ServerHandler());
             }
         });
-        bootstrap.bind(serverConfig.getPort()).sync();
+        this.batchExportUrl();
+        bootstrap.bind(serverConfig.getServerPort()).sync();
+    }
+
+    /**
+     * 为了将服务端的具体服务都暴露到注册中心，方便客户端进行调用。
+     */
+    private void batchExportUrl() {
+        Thread task = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    Thread.sleep(2500);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                for (URL url : PROVIDER_URL_SET) {
+                    registryService.register(url);
+                }
+            }
+        });
+        task.start();
     }
 }

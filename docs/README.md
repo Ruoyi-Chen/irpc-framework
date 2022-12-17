@@ -167,8 +167,28 @@ struct pollfd{
 10. Client在规定时间内接收到数据（RESP_MAP中可以取出数据了），如果根据对应uuid找到的数据是RpcInvocation实例，将其强转成RpcInvocation并返回其中的response。
 
 # 4. 开发实战二： 注册中心的接入与实现
+## 4.1 下载并启动Zookeeper
+[Zookeeper 入门](https://zhuanlan.zhihu.com/p/158986527)
+ZooKeeper是一个分布式服务协调框架，提供了分布式数据一致性的解决方案，基于ZooKeeper的数据结构，Watcher，选举机制等特点，可以实现数据的发布/订阅，软负载均衡，命名服务，统一配置管理，分布式锁，集群管理等等。
+
+**ZooKeeper能保证：**
+- 更新请求顺序进行。来自同一个client的更新请求按其发送顺序依次执行
+- 数据更新原子性。一次数据更新要么成功，要么失败 
+- 全局唯一数据视图。client无论连接到哪个server，数据视图都是一致的 
+- 实时性。在一定时间范围内，client读到的数据是最新的
+
+ZooKeeper的数据结构和Unix文件系统很类似，总体上可以看做是一棵树，每一个节点称之为一个ZNode，每一个ZNode默认能存储1M的数据。每一个ZNode可通过唯一的路径标识。如下图所示：
+
+## 监听通知机制
+Watcher是基于观察者模式实现的一种机制。如果我们需要实现当某个ZNode节点发生变化时收到通知，就可以使用Watcher监听器。
+客户端通过设置监视点（watcher）向 ZooKeeper 注册需要接收通知的 znode，在 znode 发生变化时 ZooKeeper 就会向客户端发送消息。
+这种通知机制是一次性的。一旦watcher被触发，ZooKeeper就会从相应的存储中删除。如果需要不断监听ZNode的变化，可以在收到通知后再设置新的watcher注册到ZooKeeper。
+监视点的类型有很多，如监控ZNode数据变化、监控ZNode子节点变化、监控ZNode 创建或删除。
+
+
 
 # Reference
 1. 本笔记（包括笔记中的多数图片）总结自[Java开发者的RPC实战课](https://juejin.cn/book/7047357110337667076/section/7047522878673125415?enter_from=course_center)及其评论区
 【侵删】
 2. [select/poll/epoll模型视频讲解](https://www.bilibili.com/video/BV1qJ411w7du/?spm_id_from=333.337.search-card.all.click&vd_source=4e49ce85218facdc8b33777e905fe1dc)
+3. [Zookeeper 入门](https://zhuanlan.zhihu.com/p/158986527)

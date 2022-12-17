@@ -1,6 +1,5 @@
 package org.idea.irpc.framework.interfaces;
 
-import org.idea.irpc.framework.core.server.Server;
 
 /**
  * @Author linhao

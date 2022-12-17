@@ -1,25 +1,13 @@
 package org.idea.irpc.framework.core.config;
 
+import lombok.Data;
 
+@Data
 public class ClientConfig {
 
-    private Integer port;
+    private String applicationName;
 
-    private String serverAddr;
+    private String registerAddr;
 
-    public String getServerAddr() {
-        return serverAddr;
-    }
-
-    public void setServerAddr(String serverAddr) {
-        this.serverAddr = serverAddr;
-    }
-
-    public Integer getPort() {
-        return port;
-    }
-
-    public void setPort(Integer port) {
-        this.port = port;
-    }
+    private String proxyType;
 }
