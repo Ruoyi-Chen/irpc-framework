@@ -4,6 +4,7 @@
 # 1. RPC架构设计
 
 RPC（`remote procedure call`），远程调用，其简单流程如下：
+
 ![img.png](img0.png)
 
 **四个核心组件：**
@@ -16,6 +17,7 @@ RPC（`remote procedure call`），远程调用，其简单流程如下：
 
 大致调用流程如下：
 发送服务请求 -> 包装 -> 解析 -> 服务器收到请求进行处理 -> 发回响应数据 -> 包装 -> 解析 -> 调用者收到数据
+
 ![img_1.png](img_1.png)
 
 我们希望最终将此RPC框架包装成一个像方法一样可以直接调用的、屏蔽内部细节的“方法”，如：
@@ -55,9 +57,11 @@ public class Client {
 BIO demo：/predemo/demo1_BioAndNio/BioServer.java
 
 服务端创建了socket之后会**堵塞在等待外界连接的accept函数环节**，当客户端连接上了服务端之后，accept的堵塞状态才会放开，然后进入read环节（读取客户端发送过来的网络数据）。
+
 ![img_5.png](img_5.png)
 
 客户端如果一直没有发送数据过来，那么服务端的read调用方法就会一直处于堵塞状态，倘若数据通过网络抵达了网卡缓冲区，此时则会将数据从内核态拷贝至用户态，然后返回给read调用方。
+
 ![img_6.png](img_6.png)
 
 如果客户端连接上服务器，但没发送数据，就会一直阻塞。
@@ -71,6 +75,7 @@ BIO demo：/predemo/demo1_BioAndNio/BioServer.java
 
 ### 改进方案二：
 在JDK的NIO模型中就有相关的设计【简单NIO服务器: /predemo/demo1_BioAndNio/NioSocketServer.java】
+
 ![img_8.png](img_8.png)
 - `initServer()`： 打开一个ServerSocketChannel，将其设置为非阻塞模式
 - `run()`：
@@ -83,12 +88,14 @@ BIO demo：/predemo/demo1_BioAndNio/BioServer.java
 
 #### 每次请求都需要建立一个线程，如何优化？
 将accept和read分成两个模块来处理，当accept函数接收到新的连接（其实本质就是一个文件描述符fd）之后，将其放入一个集合，然后会有一个后台任务统一对这个集合中的fd遍历执行read函数操作。
+
 ![img_9.png](img_9.png)
 
 循环调用read方法会循环进行用户态和内核态的切换，频繁切换上下文也会影响性能。
 
 ### select/poll/epoll模型
 > [select/poll/epoll模型视频讲解](https://www.bilibili.com/video/BV1qJ411w7du/?spm_id_from=333.337.search-card.all.click&vd_source=4e49ce85218facdc8b33777e905fe1dc)
+
 - select
 ![img_10.png](img_10.png)
 fd_set 使用数组实现  
@@ -125,6 +132,7 @@ struct pollfd{
 
 # 3. 开发实战一：代理层（Stub）
 基于Netty搭建了一套简单的服务端和客户端通信模型。
+
 ![img_11.png](img_11.png)
 
 **开发图中stub处理的逻辑：**
@@ -169,6 +177,7 @@ struct pollfd{
 # 4. 开发实战二： 注册中心的接入与实现
 ## 4.1 下载并启动Zookeeper
 [Zookeeper 入门](https://zhuanlan.zhihu.com/p/158986527)
+
 ZooKeeper是一个分布式服务协调框架，提供了分布式数据一致性的解决方案，基于ZooKeeper的数据结构，Watcher，选举机制等特点，可以实现数据的发布/订阅，软负载均衡，命名服务，统一配置管理，分布式锁，集群管理等等。
 
 **ZooKeeper能保证：**
@@ -185,6 +194,36 @@ Watcher是基于观察者模式实现的一种机制。如果我们需要实现�
 这种通知机制是一次性的。一旦watcher被触发，ZooKeeper就会从相应的存储中删除。如果需要不断监听ZNode的变化，可以在收到通知后再设置新的watcher注册到ZooKeeper。
 监视点的类型有很多，如监控ZNode数据变化、监控ZNode子节点变化、监控ZNode 创建或删除。
 
+![](registry-第 1 页.drawio.png)
+
+## 4.2 整体流程
+- Server：
+  - initServerConfig()：从文件中读取ServerConfig，初始化Server
+  - exportService(Object serviceBean)：传入ServiceBean实现类，向外暴露服务
+    - 将该类的第一个接口作为接口名，放入PROVIDER_CLASS_MAP(interface name -> serviceBean)
+    - 将服务提供者的host、port、serviceName、applicationName包装进自定义URL类，加入 PROVIDER_URL_SET
+  - batchExportUrl()：将服务端的具体服务暴露到注册中心，对PROVIDER_URL_SET中的URL逐个注册到注册中心
+- Client：
+  - 启动客户端。初始化iRpcListenerLoader。
+  - doSubscribeService(Class serviceBean)：开启服务之前需要预先订阅对应的服务
+    - doAfterSubscribe(URL url)：客户端订阅后，监听是否有新的服务注册
+      - 监听"{ROOT}/{serviceName}/provider"的孩子节点数据 watchChildNodeData(newServerNodePath)
+          - zkClient.watchChildNodeData(provider的path, Watcher)
+              - 重写传入watcher的process方法process(WatchedEvent watchedEvent)
+                  - 使用自定义的监听组件 `IRpcEvent iRpcEvent = new IRpcUpdateEvent(urlChangeWrapper)`
+                    - `IRpcListenerLoader.sendEvent(iRpcEvent)`
+                      - IRpcListenerLoader 初始化时（Client初始化时调用了init()）就会注册一个服务更新监听器ServiceUpdateListener，将其加入静态的iRpcListenerList里
+                        - 这个监听器的回调方法会移除老的url，加入新的url。
+                      - `sendEvent(IRpcEvent iRpcEvent)`，会遍历iRpcListenerList，如果有符合传入的事件的监听器的泛型，就会调用这个监听器的回调方法（即触发更新事件）。
+- ZookeeperRegister （extends AbstractRegister implements RegistryService）:
+  - register: 
+    - 如果zkClient中没有ROOT节点，创建该节点
+    - 将传进来的url分别构造成providerPath（"{ROOT}/{serviceName}/provider/{host}:{port}"）, consumerPath（"{ROOT}/{serviceName}/consumer/{host}:"）
+    - 如果zkClient中已经有providerPath，先将其删除；如果没有providerPath，创建临时节点数据，并把consumerPath作为数据放进去
+    - 将url放入PROVIDER_URL_SET
+  - unregister：
+    - 在zkClient中删除providerPath节点
+    - 将url从PROVIDER_URL_SET移除
 
 
 # Reference

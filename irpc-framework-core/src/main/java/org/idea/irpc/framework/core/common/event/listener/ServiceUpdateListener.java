@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.idea.irpc.framework.core.client.ConnectionHandler;
 import org.idea.irpc.framework.core.common.ChannelFutureWrapper;
 import org.idea.irpc.framework.core.common.event.IRpcListener;
+import org.idea.irpc.framework.core.common.event.IRpcUpdateEvent;
 import org.idea.irpc.framework.core.common.event.data.URLChangeWrapper;
 import org.idea.irpc.framework.core.common.utils.CommonUtils;
 
@@ -24,7 +25,7 @@ import static org.idea.irpc.framework.core.common.cache.CommonClientCache.CONNEC
  * @create 2022/12/17 14:15
  */
 @Slf4j
-public class ServiceUpdateListener implements IRpcListener {
+public class ServiceUpdateListener implements IRpcListener<IRpcUpdateEvent> {
     @Override
     public void callback(Object t) {
         // 获取到子节点的数据信息
