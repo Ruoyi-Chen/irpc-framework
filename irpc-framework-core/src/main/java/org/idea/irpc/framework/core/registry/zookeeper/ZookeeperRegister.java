@@ -83,7 +83,7 @@ public class ZookeeperRegister extends AbstractRegister implements RegistryServi
 
     @Override
     public void doAfterSubscribe(URL url) {
-        // 监听是否有新的服务注册
+        // 监听是否有新的服务注册 /irpc/org.idea.irpc.framework.interfaces.DataService/provider
         String newServerNodePath = ROOT + "/" + url.getServiceName() + "/provider";
         watchChildNodeData(newServerNodePath);
     }

@@ -62,7 +62,7 @@ public class ConnectionHandler {
 
         // 将服务提供者ip放进SERVER_ADDRESS
         SERVER_ADDRESS.add(providerIp);
-        // 将服务提供者future放入CONNECT_MAP
+        // 将服务名放入CONNECT_MAP
         List<ChannelFutureWrapper> channelFutureWrappers = CONNECT_MAP.get(providerServiceName);
         if (CommonUtils.isEmptyList(channelFutureWrappers)) {
             channelFutureWrappers = new ArrayList<>();
