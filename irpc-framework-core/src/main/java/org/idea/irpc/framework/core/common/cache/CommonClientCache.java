@@ -1,9 +1,11 @@
 package org.idea.irpc.framework.core.common.cache;
 
+import org.idea.irpc.framework.core.common.ChannelFuturePollingRef;
 import org.idea.irpc.framework.core.common.ChannelFutureWrapper;
 import org.idea.irpc.framework.core.common.protocol.RpcInvocation;
 import org.idea.irpc.framework.core.config.ClientConfig;
 import org.idea.irpc.framework.core.registry.URL;
+import org.idea.irpc.framework.core.router.IRouter;
 
 import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -49,4 +51,8 @@ public class CommonClientCache {
      * 信道连接池
      */
     public static Map<String, List<ChannelFutureWrapper>> CONNECT_MAP = new ConcurrentHashMap<>();
+
+    public static Map<String, ChannelFutureWrapper[]> SERVICE_ROUTER_MAP = new ConcurrentHashMap<>();
+    public static ChannelFuturePollingRef CHANNEL_FUTURE_POLLING_REF = new ChannelFuturePollingRef();
+    public static IRouter IROUTER;
 }

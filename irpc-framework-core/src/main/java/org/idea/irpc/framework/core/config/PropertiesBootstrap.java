@@ -2,6 +2,9 @@ package org.idea.irpc.framework.core.config;
 
 import java.io.IOException;
 
+import static org.idea.irpc.framework.core.common.constants.RpcConstants.JDK_PROXY_TYPE;
+import static org.idea.irpc.framework.core.common.constants.RpcConstants.RANDOM_ROUTER_TYPE;
+
 /**
  * 将properties的配置转换成本地的一个Map结构进行管理
  *
@@ -13,6 +16,8 @@ public class PropertiesBootstrap {
     public static final String REGISTER_ADDRESS = "irpc.registerAddr";
     public static final String APPLICATION_NAME = "irpc.applicationName";
     public static final String PROXY_TYPE = "irpc.proxyType";
+
+    public static final String ROUTER_TYPE = "irpc.router";
 
     public static ServerConfig loadServerConfigFromLocal() {
         try {
@@ -34,9 +39,10 @@ public class PropertiesBootstrap {
             throw new RuntimeException("loadClientConfigFromLocal fail,e is {}", e);
         }
         ClientConfig clientConfig = new ClientConfig();
-        clientConfig.setApplicationName(PropertiesLoader.getPropertiesStr(APPLICATION_NAME));
-        clientConfig.setRegisterAddr(PropertiesLoader.getPropertiesStr(REGISTER_ADDRESS));
-        clientConfig.setProxyType(PropertiesLoader.getPropertiesStr(PROXY_TYPE));
+        clientConfig.setApplicationName(PropertiesLoader.getPropertiesNotBlank(APPLICATION_NAME));
+        clientConfig.setRegisterAddr(PropertiesLoader.getPropertiesNotBlank(REGISTER_ADDRESS));
+        clientConfig.setProxyType(PropertiesLoader.getPropertiesStrDefault(PROXY_TYPE,JDK_PROXY_TYPE));
+        clientConfig.setRouterStrategy(PropertiesLoader.getPropertiesStrDefault(ROUTER_TYPE,RANDOM_ROUTER_TYPE));
         return clientConfig;
     }
 }

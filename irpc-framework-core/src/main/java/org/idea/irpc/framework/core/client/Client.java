@@ -1,6 +1,7 @@
 package org.idea.irpc.framework.core.client;
 
 import com.alibaba.fastjson.JSON;
+import javafx.scene.transform.Rotate;
 import lombok.Data;
 import org.idea.irpc.framework.core.common.event.IRpcListenerLoader;
 import org.idea.irpc.framework.core.common.protocol.RpcDecoder;
@@ -22,13 +23,16 @@ import org.idea.irpc.framework.core.proxy.jdk.JDKProxyFactory;
 import org.idea.irpc.framework.core.registry.URL;
 import org.idea.irpc.framework.core.registry.zookeeper.AbstractRegister;
 import org.idea.irpc.framework.core.registry.zookeeper.ZookeeperRegister;
+import org.idea.irpc.framework.core.router.IRouter;
+import org.idea.irpc.framework.core.router.RandomRouterImpl;
+import org.idea.irpc.framework.core.router.RotateRouterImpl;
 import org.idea.irpc.framework.interfaces.DataService;
 import org.idea.irpc.framework.core.config.ClientConfig;
 
 import java.util.List;
 
-import static org.idea.irpc.framework.core.common.cache.CommonClientCache.SEND_QUEUE;
-import static org.idea.irpc.framework.core.common.cache.CommonClientCache.SUBSCRIBE_SERVICE_LIST;
+import static org.idea.irpc.framework.core.common.cache.CommonClientCache.*;
+import static org.idea.irpc.framework.core.common.constants.RpcConstants.*;
 
 /**
  * 客户端
@@ -74,6 +78,9 @@ public class Client {
 //        client.setClientConfig(clientConfig);
         // 2. 启动客户端
         RpcReference rpcReference = client.initClientApplication();
+
+        client.initClientConfig();
+
         DataService dataService = rpcReference.get(DataService.class);
 
         client.doSubscribeService(DataService.class);
@@ -85,6 +92,20 @@ public class Client {
             String result = dataService.sendData("test");
             log.info("客户端收到结果--> " + result);
             Thread.sleep(1000);
+        }
+    }
+
+    /**
+     * todo
+     * 后续可以考虑加入spi
+     */
+    private void initClientConfig() {
+        // 初始化路由策略
+        String routerStrategy = clientConfig.getRouterStrategy();
+        if (RANDOM_ROUTER_TYPE.equals(routerStrategy)) {
+            IROUTER = new RandomRouterImpl();
+        } else if (ROTATE_ROUTER_TYPE.equals(routerStrategy)) {
+            IROUTER = new RotateRouterImpl();
         }
     }
 
@@ -105,7 +126,7 @@ public class Client {
         iRpcListenerLoader.init();
         this.clientConfig = PropertiesBootstrap.loadClientConfigFromLocal();
         RpcReference rpcReference;
-        if ("javassist".equals(clientConfig.getProxyType())) {
+        if (JAVASSIST_PROXY_TYPE.equals(clientConfig.getProxyType())) {
             rpcReference = new RpcReference(new JavassistProxyFactory());
         } else {
             rpcReference = new RpcReference(new JDKProxyFactory());
@@ -129,6 +150,8 @@ public class Client {
             URL url = new URL();
             url.setServiceName(providerServiceName);
             // 客户端在此新增了一个订阅的功能
+            // 在客户端和服务提供端建立连接的时候，会触发一个订阅的函数，
+            // 这个函数的内部需要订阅每个Provider目录下节点的变化信息，以及Provider目录下每个子节点自身的数据变动情况。
             abstractRegister.doAfterSubscribe(url);
         }
     }

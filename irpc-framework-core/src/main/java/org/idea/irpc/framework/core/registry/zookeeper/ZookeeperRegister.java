@@ -1,10 +1,12 @@
 package org.idea.irpc.framework.core.registry.zookeeper;
 
+import com.alibaba.fastjson.JSON;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.idea.irpc.framework.core.common.event.IRpcEvent;
 import org.idea.irpc.framework.core.common.event.IRpcListenerLoader;
 import org.idea.irpc.framework.core.common.event.IRpcUpdateEvent;
+import org.idea.irpc.framework.core.common.event.IrpcNodeChangeEvent;
 import org.idea.irpc.framework.core.common.event.data.URLChangeWrapper;
 import org.idea.irpc.framework.core.registry.RegistryService;
 import org.idea.irpc.framework.core.registry.URL;
@@ -84,8 +86,34 @@ public class ZookeeperRegister extends AbstractRegister implements RegistryServi
     @Override
     public void doAfterSubscribe(URL url) {
         // 监听是否有新的服务注册 /irpc/org.idea.irpc.framework.interfaces.DataService/provider
-        String newServerNodePath = ROOT + "/" + url.getServiceName() + "/provider";
+//        String newServerNodePath = ROOT + "/" + url.getServiceName() + "/provider";
+        String servicePath = url.getParameters().get("servicePath");
+        String newServerNodePath = ROOT + "/" + servicePath;
         watchChildNodeData(newServerNodePath);
+        String providerIpsStrJson = url.getParameters().get("providerIps");
+        List<String> providerIpList = JSON.parseObject(providerIpsStrJson, List.class);
+        for (String providerIp : providerIpList) {
+            this.watchNodeDataChange(ROOT + "/" + servicePath + "/" + providerIp);
+        }
+    }
+
+    private void watchNodeDataChange(String newServerNodePath) {
+        zkClient.watchNodeData(newServerNodePath, new Watcher() {
+            @Override
+            public void process(WatchedEvent watchedEvent) {
+                String path = watchedEvent.getPath();
+                String nodeData = zkClient.getNodeData(path);
+                nodeData = nodeData.replace(";", "/");
+                ProviderNodeInfo providerNodeInfo = URL.buildURLFromUrlStr(nodeData);
+                /**
+                 * 一旦服务提供方的权重信息发生了变化，
+                 * 此时就会触发一个IRpcNodeChangeEvent事件，并且最终通知到本地缓存的修改。
+                 */
+                IRpcEvent iRpcEvent = new IrpcNodeChangeEvent(providerNodeInfo);
+                IRpcListenerLoader.sendEvent(iRpcEvent);
+                watchNodeDataChange(newServerNodePath);
+            }
+        });
     }
 
     /**

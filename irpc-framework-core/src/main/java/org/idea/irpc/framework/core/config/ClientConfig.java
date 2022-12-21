@@ -10,4 +10,6 @@ public class ClientConfig {
     private String registerAddr;
 
     private String proxyType;
+
+    private String routerStrategy;
 }

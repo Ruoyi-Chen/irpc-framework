@@ -27,7 +27,7 @@ public class Client {
     public static void main(String[] args) {
         //调用一次远程服务
         // 1. 确定发给哪个服务器
-        Server org.idea.irpc.framework.core.server = new Server("127.0.0.1",9999);
+        Server server = new Server("127.0.0.1",9999);
         // 2. 与之建立连接
         org.idea.irpc.framework.core.server.doConnect();
         // 3. 服务器发送响应数据
@@ -225,9 +225,64 @@ Watcher是基于观察者模式实现的一种机制。如果我们需要实现�
     - 在zkClient中删除providerPath节点
     - 将url从PROVIDER_URL_SET移除
 
+# 5. 开发实战三：路由层（Router）
+![img_12.png](img_12.png)
+同一个服务可能对应着多个服务提供者，因此当客户端请求服务时，需要通过负载均衡策略从中选择一个合适的服务提供者
+
+之前的设计思路为：从多个**连接**（ChannelFuture通道）中随机选择一个，进行网络通信
+
+```java
+ChannelFuture channelFuture = channelFutureWrappers.get(new Random().nextInt(channelFutureWrappers.size())).getChannelFuture();
+```
+
+引入路由层，可以自定义负载均衡策略进行优化。
+
+基于 `SERVICE_ROUTER_MAP` 实现
+
+-   key为服务提供者名字，value为对应的连接数组
+
+```
+key -> ProviderServiceName: String
+value -> ChannelFutureWrapper[]: Array
+```
+
+## 带权重的随机选取策略
+
+自定义随机选取逻辑，将转化后的连接数组存入 SERVICE_ROUTER_MAP 中
+
+虽然是随机选取，但是权重值越大，被选取的次数也会越多
+
+默认初始情况下weight值为100
+
+## 轮询策略
+
+直接按照添加的先后顺序获取连接，将转化后的连接数组存入 SERVICE_ROUTER_MAP 中
+
+###获取连接实现
+
+ChannelFuturePollingRef为实现类，用于从SERVICE_ROUTER_MAP中根据服务提供者名字轮询获取连接
+
+本质是通过原子类取模运算获取连接
+
+```java
+private AtomicLong referenceTimes = new AtomicLong(0);
+
+public ChannelFutureWrapper getChannelFutureWrapper(String serviceName) {
+    ChannelFutureWrapper[] arr = SERVICE_ROUTER_MAP.get(serviceName);
+    long i = referenceTimes.getAndIncrement();
+    int index = (int) (i % arr.length);
+    return arr[index];
+}
+```
+
+## 权重更新事件
+
+每个服务提供者在注册服务时默认的权重初始值为100。当该值被修改后，触发权重更新事件，修改对应的 SERVICE_ROUTER_MAP
+
+该更新事件也是通过Watcher与自定义的监听事件机制实现.
 
 # Reference
 1. 本笔记（包括笔记中的多数图片）总结自[Java开发者的RPC实战课](https://juejin.cn/book/7047357110337667076/section/7047522878673125415?enter_from=course_center)及其评论区
 【侵删】
-2. [select/poll/epoll模型视频讲解](https://www.bilibili.com/video/BV1qJ411w7du/?spm_id_from=333.337.search-card.all.click&vd_source=4e49ce85218facdc8b33777e905fe1dc)
-3. [Zookeeper 入门](https://zhuanlan.zhihu.com/p/158986527)
+2. [select/poll/epoll模型视频讲](https://www.bilibili.com/video/BV1qJ411w7du/?spm_id_from=333.337.search-card.all.click&vd_source=4e49ce85218facdc8b33777e905fe1dc)
+3. [Zookeeper 入门](ht解tps://zhuanlan.zhihu.com/p/158986527)
