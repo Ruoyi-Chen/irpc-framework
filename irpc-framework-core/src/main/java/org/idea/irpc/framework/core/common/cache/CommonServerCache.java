@@ -1,6 +1,8 @@
 package org.idea.irpc.framework.core.common.cache;
 
+import org.idea.irpc.framework.core.registry.RegistryService;
 import org.idea.irpc.framework.core.registry.URL;
+import org.idea.irpc.framework.core.serialize.SerializeFactory;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -17,4 +19,7 @@ public class CommonServerCache {
      * 服务提供者URL列表
      */
     public static final Set<URL> PROVIDER_URL_SET = new HashSet<>();
+
+    public static RegistryService REGISTRY_SERVICE;
+    public static SerializeFactory SERVER_SERIALIZE_FACTORY;
 }

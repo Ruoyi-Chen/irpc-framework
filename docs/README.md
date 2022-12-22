@@ -281,6 +281,38 @@ public ChannelFutureWrapper getChannelFutureWrapper(String serviceName) {
 
 该更新事件也是通过Watcher与自定义的监听事件机制实现.
 
+## 常见的负载均衡算法
+除了随机和轮训算法之外，常见的负载均衡算法有以下几种：
+
+- 最小连接数
+最小连接数负载均衡算法需要记录每个应用服务器正在处理的连接数，然后将新来的请求转发到最少的那台上。但是对于每台服务器的请求量都需要做记录并且上报到一个固定的位置，并且通知到客户端每台目标服务器当前的连接数状态，实现起来会比较复杂。
+- 分布式哈希的一致性
+分布式哈希的一致性算法在实际使用的时候可能会出现“哈希倾斜” 的问题，为了解决这类问题，通常在算法的内部会设计一些虚拟节点的存在，从而平衡请求的均匀性。
+- ip的hash算法
+ip的hash算法通常是将源地址通过hash计算，定位到具体的一台机器上。但是如果一旦某台机器出现奔溃的话，该ip的请求就会直接崩溃，对于容错性来说不强。
+
+# 6. 开发实战四：序列化
+RpcProtocol和RpcInvocation两者之间的关系设计大概如下所示：
+![img_13.png](img_13.png)
+
+如何将RpcInvocation对象转换为byte数组？
+四种序列化方案：
+- Jdk
+- Hessian
+- Kryo
+- FastJson
+
+## 性能对比
+**性能指标：**
+1. 产生的码流大小；
+2. 序列化处理的速度
+
+![img_14.png](img_14.png)
+
+ps：网上的主流答案是kryo>hessian>fastjson>jdk
+
+
+
 # Reference
 1. 本笔记（包括笔记中的多数图片）总结自[Java开发者的RPC实战课](https://juejin.cn/book/7047357110337667076/section/7047522878673125415?enter_from=course_center)及其评论区
 【侵删】

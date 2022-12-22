@@ -26,6 +26,23 @@ public class IRpcListenerLoader {
         iRpcListenerList.add(iRpcListener);
     }
 
+    public static void sendSyncEvent(IRpcEvent iRpcEvent) {
+        System.out.println(iRpcListenerList);
+        if (CommonUtils.isEmptyList(iRpcListenerList)) {
+            return;
+        }
+        for (IRpcListener iRpcListener : iRpcListenerList) {
+            Class<?> type = getInterfaceT(iRpcListener);
+            if (type.equals(iRpcEvent.getClass())) {
+                try {
+                    iRpcListener.callback(iRpcEvent.getData());
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
     public void init() {
         registerListener(new ServiceUpdateListener());
     }

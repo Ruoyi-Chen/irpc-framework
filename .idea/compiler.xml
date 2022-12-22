@@ -12,6 +12,7 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <module name="irpc-framework-interface" />
+        <module name="irpc-framework-jmh" />
         <module name="irpc-framework-core" />
       </profile>
     </annotationProcessing>

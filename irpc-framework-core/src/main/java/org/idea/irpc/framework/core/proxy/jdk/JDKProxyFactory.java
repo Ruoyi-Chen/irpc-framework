@@ -1,6 +1,7 @@
 package org.idea.irpc.framework.core.proxy.jdk;
 
 
+import org.idea.irpc.framework.core.client.RpcReferenceWrapper;
 import org.idea.irpc.framework.core.proxy.ProxyFactory;
 
 import java.lang.reflect.Proxy;
@@ -21,8 +22,9 @@ public class JDKProxyFactory implements ProxyFactory {
      * interfaces:　　一个Interface对象的数组，表示的是我将要给我需要代理的对象提供一组什么接口，如果我提供了一组接口给它，那么这个代理对象就宣称实现了该接口(多态)，这样我就能调用这组接口中的方法了
      * h:　　         一个InvocationHandler对象，表示的是当我这个动态代理对象在调用方法的时候，会关联到哪一个InvocationHandler对象上
      */
-    public <T> T getProxy(Class clazz) throws Throwable {
-        return (T) Proxy.newProxyInstance(clazz.getClassLoader(), new Class[]{clazz},
-                new JDKClientInvocationHandler(clazz));
+    @Override
+    public <T> T getProxy(RpcReferenceWrapper rpcReferenceWrapper) throws Throwable {
+        return (T) Proxy.newProxyInstance(rpcReferenceWrapper.getAimClass().getClassLoader(), new Class[]{rpcReferenceWrapper.getAimClass()},
+                new JDKClientInvocationHandler(rpcReferenceWrapper));
     }
 }

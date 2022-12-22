@@ -1,5 +1,6 @@
 package org.idea.irpc.framework.core.server;
 
+import org.idea.irpc.framework.core.common.event.IRpcListenerLoader;
 import org.idea.irpc.framework.core.common.protocol.RpcDecoder;
 import org.idea.irpc.framework.core.common.protocol.RpcEncoder;
 import org.idea.irpc.framework.core.common.utils.CommonUtils;
@@ -16,16 +17,23 @@ import lombok.extern.slf4j.Slf4j;
 import org.idea.irpc.framework.core.registry.RegistryService;
 import org.idea.irpc.framework.core.registry.URL;
 import org.idea.irpc.framework.core.registry.zookeeper.ZookeeperRegister;
+import org.idea.irpc.framework.core.serialize.fastjson.FastJsonSerializeFactory;
+import org.idea.irpc.framework.core.serialize.hessian.HessianSerializeFactory;
+import org.idea.irpc.framework.core.serialize.jdk.JdkSerializeFactory;
+import org.idea.irpc.framework.core.serialize.kryo.KryoSerializeFactory;
 
-import static org.idea.irpc.framework.core.common.cache.CommonServerCache.PROVIDER_CLASS_MAP;
-import static org.idea.irpc.framework.core.common.cache.CommonServerCache.PROVIDER_URL_SET;
+import static org.idea.irpc.framework.core.common.cache.CommonServerCache.*;
+import static org.idea.irpc.framework.core.common.cache.CommonServerCache.SERVER_SERIALIZE_FACTORY;
+import static org.idea.irpc.framework.core.common.constants.RpcConstants.*;
+import static org.idea.irpc.framework.core.common.constants.RpcConstants.KRYO_SERIALIZE_TYPE;
 
 @Slf4j
 public class Server {
 
     private ServerConfig serverConfig;
 
-    private RegistryService registryService;
+    private static IRpcListenerLoader iRpcListenerLoader;
+
 
     public ServerConfig getServerConfig() {
         return serverConfig;
@@ -57,22 +65,24 @@ public class Server {
         Server server = new Server();
 
         // 2. 配置server
-//        ServerConfig serverConfig = new ServerConfig();
-//        serverConfig.setPort(9091);
-//        server.setServerConfig(serverConfig);
         server.initServerConfig();
 
 //        // 3. 注册server服务
 //        server.registyService(new DataServiceImpl());
-
+        // 初始化监听器
+        iRpcListenerLoader = new IRpcListenerLoader();
+        iRpcListenerLoader.init();
         // 3. 向外暴露服务
-        server.exportService(new DataServiceImpl());
+        server.exportService(new ServiceWrapper(new DataServiceImpl()));
+        server.exportService(new ServiceWrapper(new UserServiceImpl()));
+        ApplicationShutdownHook.registryShutdownHook();
 
         // 4. 启动应用
         server.startApplication();
     }
 
-    private void exportService(Object serviceBean) {
+    private void exportService(ServiceWrapper serviceWrapper) {
+        Object serviceBean = serviceWrapper.getServiceObj();
         if (serviceBean.getClass().getInterfaces().length == 0) {
             throw new RuntimeException("service must had interfaces!");
         }
@@ -80,8 +90,8 @@ public class Server {
         if (interfaces.length > 1) {
             throw new RuntimeException("service must only had one interface");
         }
-        if (registryService == null) {
-            registryService = new ZookeeperRegister(serverConfig.getRegisterAddr());
+        if (REGISTRY_SERVICE == null) {
+            REGISTRY_SERVICE = new ZookeeperRegister(serverConfig.getRegisterAddr());
         }
 
         // 默认选择该对象的第一个实现接口
@@ -93,6 +103,8 @@ public class Server {
         url.setApplicationName(serverConfig.getApplicationName());
         url.addParameter("host", CommonUtils.getIpAddress());
         url.addParameter("port", String.valueOf(serverConfig.getServerPort()));
+        url.addParameter("group", String.valueOf(serviceWrapper.getGroup()));
+
         PROVIDER_URL_SET.add(url);
     }
 
@@ -101,6 +113,24 @@ public class Server {
     private void initServerConfig() {
         ServerConfig serverConfig = PropertiesBootstrap.loadServerConfigFromLocal();
         this.setServerConfig(serverConfig);
+        String serverSerialize = serverConfig.getServerSerialize();
+        switch (serverSerialize) {
+            case JDK_SERIALIZE_TYPE:
+                SERVER_SERIALIZE_FACTORY = new JdkSerializeFactory();
+                break;
+            case FAST_JSON_SERIALIZE_TYPE:
+                SERVER_SERIALIZE_FACTORY = new FastJsonSerializeFactory();
+                break;
+            case HESSIAN2_SERIALIZE_TYPE:
+                SERVER_SERIALIZE_FACTORY = new HessianSerializeFactory();
+                break;
+            case KRYO_SERIALIZE_TYPE:
+                SERVER_SERIALIZE_FACTORY = new KryoSerializeFactory();
+                break;
+            default:
+                throw new RuntimeException("no match serialize type for" + serverSerialize);
+        }
+        System.out.println("serverSerialize is "+serverSerialize);
     }
 
     /**
@@ -171,7 +201,7 @@ public class Server {
                     e.printStackTrace();
                 }
                 for (URL url : PROVIDER_URL_SET) {
-                    registryService.register(url);
+                    REGISTRY_SERVICE.register(url);
                 }
             }
         });

@@ -1,5 +1,6 @@
 package org.idea.irpc.framework.core.proxy.javassist;
 
+import org.idea.irpc.framework.core.client.RpcReferenceWrapper;
 import org.idea.irpc.framework.core.common.protocol.RpcInvocation;
 
 import java.lang.reflect.InvocationHandler;
@@ -19,17 +20,17 @@ public class JavassistInvocationHandler implements InvocationHandler {
 
     private final static Object OBJECT = new Object();
 
-    private Class<?> clazz;
-
-    public JavassistInvocationHandler(Class<?> clazz) {
-        this.clazz = clazz;
+    private RpcReferenceWrapper rpcReferenceWrapper;
+    public JavassistInvocationHandler(RpcReferenceWrapper rpcReferenceWrapper) {
+        this.rpcReferenceWrapper = rpcReferenceWrapper;
     }
 
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
         RpcInvocation rpcInvocation = new RpcInvocation();
         rpcInvocation.setArgs(args);
         rpcInvocation.setTargetMethod(method.getName());
-        rpcInvocation.setTargetServiceName(clazz.getName());
+        rpcInvocation.setTargetServiceName(rpcReferenceWrapper.getAimClass().getName());
+
         rpcInvocation.setUuid(UUID.randomUUID().toString());
         RESP_MAP.put(rpcInvocation.getUuid(), OBJECT);
         //代理类内部将请求放入到发送队列中，等待发送队列发送请求

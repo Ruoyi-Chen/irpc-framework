@@ -4,6 +4,7 @@ import org.idea.irpc.framework.core.registry.RegistryService;
 import org.idea.irpc.framework.core.registry.URL;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.idea.irpc.framework.core.common.cache.CommonClientCache.SUBSCRIBE_SERVICE_LIST;
 import static org.idea.irpc.framework.core.common.cache.CommonServerCache.PROVIDER_URL_SET;
@@ -25,7 +26,7 @@ public abstract class AbstractRegister implements RegistryService {
 
     @Override
     public void subscribe(URL url) {
-        SUBSCRIBE_SERVICE_LIST.add(url.getServiceName());
+        SUBSCRIBE_SERVICE_LIST.add(url);
     }
 
     @Override
@@ -40,4 +41,5 @@ public abstract class AbstractRegister implements RegistryService {
     public abstract void doBeforeSubscribe(URL url);
     public abstract List<String> getProviderIps(String serviceName);
 
+    public abstract Map<String, String> getServiceWeightMap(String name);
 }

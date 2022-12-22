@@ -12,7 +12,9 @@ import org.idea.irpc.framework.core.registry.RegistryService;
 import org.idea.irpc.framework.core.registry.URL;
 import org.idea.irpc.framework.interfaces.DataService;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * @Author : Ruoyi Chen
@@ -43,6 +45,17 @@ public class ZookeeperRegister extends AbstractRegister implements RegistryServi
     public List<String> getProviderIps(String serviceName) {
         List<String> nodeDataList = this.zkClient.getChildrenData(ROOT + "/" + serviceName + "/provider");
         return nodeDataList;
+    }
+
+    @Override
+    public Map<String, String> getServiceWeightMap(String serviceName) {
+        List<String> nodeDataList = this.zkClient.getChildrenData(ROOT + "/" + serviceName + "/provider");
+        Map<String, String> result = new HashMap<>();
+        for (String ipAndHost : nodeDataList) {
+            String childData = this.zkClient.getNodeData(ROOT + "/" + serviceName + "/provider/" + ipAndHost);
+            result.put(ipAndHost, childData);
+        }
+        return result;
     }
 
     @Override

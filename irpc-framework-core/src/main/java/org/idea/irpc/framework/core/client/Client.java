@@ -26,10 +26,15 @@ import org.idea.irpc.framework.core.registry.zookeeper.ZookeeperRegister;
 import org.idea.irpc.framework.core.router.IRouter;
 import org.idea.irpc.framework.core.router.RandomRouterImpl;
 import org.idea.irpc.framework.core.router.RotateRouterImpl;
+import org.idea.irpc.framework.core.serialize.fastjson.FastJsonSerializeFactory;
+import org.idea.irpc.framework.core.serialize.hessian.HessianSerializeFactory;
+import org.idea.irpc.framework.core.serialize.jdk.JdkSerializeFactory;
+import org.idea.irpc.framework.core.serialize.kryo.KryoSerializeFactory;
 import org.idea.irpc.framework.interfaces.DataService;
 import org.idea.irpc.framework.core.config.ClientConfig;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.idea.irpc.framework.core.common.cache.CommonClientCache.*;
 import static org.idea.irpc.framework.core.common.constants.RpcConstants.*;
@@ -72,18 +77,16 @@ public class Client {
     public static void main(String[] args) throws Throwable {
         // 1. 初始化客户端，配置参数
         Client client = new Client();
-//        ClientConfig clientConfig = new ClientConfig();
-//        clientConfig.setPort(9091);
-//        clientConfig.setServerAddr("localhost");
-//        client.setClientConfig(clientConfig);
         // 2. 启动客户端
         RpcReference rpcReference = client.initClientApplication();
-
         client.initClientConfig();
 
-        DataService dataService = rpcReference.get(DataService.class);
-
+        RpcReferenceWrapper<DataService> rpcReferenceWrapper = new RpcReferenceWrapper<>();
+        rpcReferenceWrapper.setAimClass(DataService.class);
+        rpcReferenceWrapper.setGroup("default");
+        DataService dataService = rpcReference.get(rpcReferenceWrapper);
         client.doSubscribeService(DataService.class);
+
         ConnectionHandler.setBootstrap(client.getBootstrap());
         client.doConnectServer();
         client.startClient();
@@ -102,15 +105,37 @@ public class Client {
     private void initClientConfig() {
         // 初始化路由策略
         String routerStrategy = clientConfig.getRouterStrategy();
-        if (RANDOM_ROUTER_TYPE.equals(routerStrategy)) {
-            IROUTER = new RandomRouterImpl();
-        } else if (ROTATE_ROUTER_TYPE.equals(routerStrategy)) {
-            IROUTER = new RotateRouterImpl();
+        switch (routerStrategy) {
+            case RANDOM_ROUTER_TYPE:
+                IROUTER = new RandomRouterImpl();
+                break;
+            case ROTATE_ROUTER_TYPE:
+                IROUTER = new RotateRouterImpl();
+                break;
+            default:
+                throw new RuntimeException("no match routerStrategy for" + routerStrategy);
+        }
+        String clientSerialize = clientConfig.getClientSerialize();
+        switch (clientSerialize) {
+            case JDK_SERIALIZE_TYPE:
+                CLIENT_SERIALIZE_FACTORY = new JdkSerializeFactory();
+                break;
+            case FAST_JSON_SERIALIZE_TYPE:
+                CLIENT_SERIALIZE_FACTORY = new FastJsonSerializeFactory();
+                break;
+            case HESSIAN2_SERIALIZE_TYPE:
+                CLIENT_SERIALIZE_FACTORY = new HessianSerializeFactory();
+                break;
+            case KRYO_SERIALIZE_TYPE:
+                CLIENT_SERIALIZE_FACTORY = new KryoSerializeFactory();
+                break;
+            default:
+                throw new RuntimeException("no match serialize type for " + clientSerialize);
         }
     }
 
     private RpcReference initClientApplication() {
-        NioEventLoopGroup clientGroup = new NioEventLoopGroup();
+        EventLoopGroup clientGroup = new NioEventLoopGroup();
         bootstrap.group(clientGroup);
         bootstrap.channel(NioSocketChannel.class);
         bootstrap.handler(new ChannelInitializer<SocketChannel>() {
@@ -138,17 +163,18 @@ public class Client {
      * 开始和各个provider建立连接
      */
     private void doConnectServer() {
-        for (String providerServiceName : SUBSCRIBE_SERVICE_LIST) {
-            List<String> providerIps = abstractRegister.getProviderIps(providerServiceName);
+        for (URL providerURL : SUBSCRIBE_SERVICE_LIST) {
+            List<String> providerIps = abstractRegister.getProviderIps(providerURL.getServiceName());
             for (String providerIp : providerIps) {
                 try {
-                    ConnectionHandler.connect(providerServiceName, providerIp);
+                    ConnectionHandler.connect(providerURL.getServiceName(), providerIp);
                 } catch (InterruptedException e) {
                     log.error("[doConnectServer] connect fail ", e);
                 }
             }
             URL url = new URL();
-            url.setServiceName(providerServiceName);
+            url.addParameter("servicePath", providerURL.getServiceName() + "/provider");
+            url.addParameter("providerIps", JSON.toJSONString(providerIps));
             // 客户端在此新增了一个订阅的功能
             // 在客户端和服务提供端建立连接的时候，会触发一个订阅的函数，
             // 这个函数的内部需要订阅每个Provider目录下节点的变化信息，以及Provider目录下每个子节点自身的数据变动情况。
@@ -170,7 +196,10 @@ public class Client {
         url.setApplicationName(clientConfig.getApplicationName());
         url.setServiceName(serviceBean.getName());
         url.addParameter("host", CommonUtils.getIpAddress());
+        Map<String, String> result = abstractRegister.getServiceWeightMap(serviceBean.getName());
+        URL_MAP.put(serviceBean.getName(), result);
         abstractRegister.subscribe(url);
+
     }
 
 //    private RpcReference startClientApplication() throws InterruptedException {
@@ -221,9 +250,9 @@ public class Client {
                     // 阻塞模式，从发送队列中取出一个对象
                     RpcInvocation data = SEND_QUEUE.take();
                     // 将RpcInvocation封装到RpcProtocol对象中，发送给服务端，这里正好对应了ServerHandler
-                    String json = JSON.toJSONString(data);
-                    RpcProtocol rpcProtocol = new RpcProtocol(json.getBytes());
-
+//                    String json = JSON.toJSONString(data);
+//                    RpcProtocol rpcProtocol = new RpcProtocol(json.getBytes());
+                    RpcProtocol rpcProtocol = new RpcProtocol(CLIENT_SERIALIZE_FACTORY.serialize(data));
                     ChannelFuture channelFuture = ConnectionHandler.getChannelFuture(data.getTargetServiceName());
                     // netty的通道负责发送数据到服务端
                     channelFuture.channel().writeAndFlush(rpcProtocol);

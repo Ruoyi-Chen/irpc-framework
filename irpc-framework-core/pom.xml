@@ -32,6 +32,8 @@
         <zookeeper.version>3.4.14</zookeeper.version>
         <zkClient.version>0.7</zkClient.version>
         <curator.version>2.12.0</curator.version>
+        <hessian.version>4.0.62</hessian.version>
+        <kryo.version>3.0.3</kryo.version>
     </properties>
 
 
@@ -119,6 +121,19 @@
             <groupId>org.cherry</groupId>
             <artifactId>irpc-framework-interface</artifactId>
             <version>1.0.1-SNAPSHOT</version>
+        </dependency>
+
+<!--        序列化-->
+        <dependency>
+            <groupId>com.esotericsoftware</groupId>
+            <artifactId>kryo-shaded</artifactId>
+            <version>${kryo.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.caucho</groupId>
+            <artifactId>hessian</artifactId>
+            <version>${hessian.version}</version>
         </dependency>
     </dependencies>
 </project>

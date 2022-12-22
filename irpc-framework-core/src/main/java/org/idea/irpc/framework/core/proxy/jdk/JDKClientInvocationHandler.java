@@ -1,5 +1,6 @@
 package org.idea.irpc.framework.core.proxy.jdk;
 
+import org.idea.irpc.framework.core.client.RpcReferenceWrapper;
 import org.idea.irpc.framework.core.common.protocol.RpcInvocation;
 import lombok.extern.slf4j.Slf4j;
 
@@ -21,9 +22,10 @@ import static org.idea.irpc.framework.core.common.cache.CommonClientCache.SEND_Q
 @Slf4j
 public class JDKClientInvocationHandler implements InvocationHandler {
     private final static Object OBJECT = new Object();
-    private Class<?> clazz;
-    public JDKClientInvocationHandler(Class<?> clazz) {
-        this.clazz = clazz;
+
+    private RpcReferenceWrapper rpcReferenceWrapper;
+    public JDKClientInvocationHandler(RpcReferenceWrapper rpcReferenceWrapper) {
+        this.rpcReferenceWrapper = rpcReferenceWrapper;
     }
 
     /**
@@ -35,7 +37,8 @@ public class JDKClientInvocationHandler implements InvocationHandler {
         RpcInvocation rpcInvocation = new RpcInvocation();
         rpcInvocation.setArgs(args);
         rpcInvocation.setTargetMethod(method.getName());
-        rpcInvocation.setTargetServiceName(clazz.getName());
+        rpcInvocation.setTargetServiceName(rpcReferenceWrapper.getAimClass().getName());
+
 
         // 注入uuid，对每一次请求都做单独区分
         rpcInvocation.setUuid(UUID.randomUUID().toString());

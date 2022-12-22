@@ -8,4 +8,5 @@ public class ServerConfig {
     private Integer serverPort;
     private String registerAddr;
     private String  applicationName;
+    private String serverSerialize;
 }
