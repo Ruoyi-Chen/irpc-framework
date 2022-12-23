@@ -4,10 +4,10 @@ import io.netty.channel.ChannelFuture;
 import lombok.extern.slf4j.Slf4j;
 import org.idea.irpc.framework.core.client.ConnectionHandler;
 import org.idea.irpc.framework.core.common.ChannelFutureWrapper;
-import org.idea.irpc.framework.core.common.event.IRpcListener;
 import org.idea.irpc.framework.core.common.event.IRpcUpdateEvent;
 import org.idea.irpc.framework.core.common.event.data.URLChangeWrapper;
 import org.idea.irpc.framework.core.common.utils.CommonUtils;
+import org.idea.irpc.framework.core.router.Selector;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Set;
 
 import static org.idea.irpc.framework.core.common.cache.CommonClientCache.CONNECT_MAP;
+import static org.idea.irpc.framework.core.common.cache.CommonClientCache.IROUTER;
 
 /**
  * zk的服务提供者节点发生了变更，需要发送事件通知操作的目的是什么？
@@ -91,6 +92,10 @@ public class ServiceUpdateListener implements IRpcListener<IRpcUpdateEvent> {
 
             // 最终更新服务
             CONNECT_MAP.put(urlChangeWrapper.getServiceName(), finalChannelFutureWrappers);
+
+            Selector selector = new Selector();
+            selector.setProviderServiceName(urlChangeWrapper.getServiceName());
+            IROUTER.refreshRouterArr(selector);
         }
     }
 }

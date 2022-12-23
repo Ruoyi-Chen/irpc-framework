@@ -14,6 +14,17 @@ public class RpcProtocol implements Serializable {
      * 如果相同就认为是一致的，可以进行反序列化，
      * 否则就会出现序列化版本不一致的异常，即是InvalidCastException。
      * https://blog.51cto.com/u_12302929/2971467
+     *
+     * 在“序列化存储/反序列化读取”或者是“序列化传输/反序列化接收”时，
+     * JVM 会把传来的字节流中的serialVersionUID与本地相应实体（类）的serialVersionUID进行比较，
+     * 如果相同就认为是一致的，可以进行反序列化，否则就会出现序列化版本不一致的异常。
+     *
+     * 在对实体类进行不影响业务流程的升级时，
+     * 比如只追加了一个附加信息字段，可以不改变序列化版本号，来实现新旧实体类的兼容性（接收方的类里没有的字段被舍弃；多出来的字段赋初始值）。
+     *
+     * 如果我们没有手动设置这个serialVersionUID的话，
+     * Java编译器会帮助我们进行默认的设置，
+     * 另外如果我们希望对象里的某些字段不被序列化处理的话，可以尝试使用transient关键字。
      */
     private static final long serialVersionUID = 5359096060555795690L;
 

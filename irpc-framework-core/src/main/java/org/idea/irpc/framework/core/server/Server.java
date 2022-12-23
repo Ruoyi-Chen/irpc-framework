@@ -14,6 +14,9 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import lombok.extern.slf4j.Slf4j;
+import org.idea.irpc.framework.core.filter.server.ServerFilterChain;
+import org.idea.irpc.framework.core.filter.server.ServerLogFilterImpl;
+import org.idea.irpc.framework.core.filter.server.ServerTokenFilterImpl;
 import org.idea.irpc.framework.core.registry.RegistryService;
 import org.idea.irpc.framework.core.registry.URL;
 import org.idea.irpc.framework.core.registry.zookeeper.ZookeeperRegister;
@@ -72,9 +75,17 @@ public class Server {
         // 初始化监听器
         iRpcListenerLoader = new IRpcListenerLoader();
         iRpcListenerLoader.init();
+
         // 3. 向外暴露服务
-        server.exportService(new ServiceWrapper(new DataServiceImpl()));
-        server.exportService(new ServiceWrapper(new UserServiceImpl()));
+        ServiceWrapper dataServiceServiceWrapper = new ServiceWrapper(new DataServiceImpl(), "dev");
+        dataServiceServiceWrapper.setServiceToken("token-a");
+        dataServiceServiceWrapper.setLimit(2);
+        ServiceWrapper userServiceServiceWrapper = new ServiceWrapper(new UserServiceImpl(), "dev");
+        userServiceServiceWrapper.setServiceToken("token-b");
+        userServiceServiceWrapper.setLimit(2);
+
+        server.exportService(dataServiceServiceWrapper);
+        server.exportService(userServiceServiceWrapper);
         ApplicationShutdownHook.registryShutdownHook();
 
         // 4. 启动应用
@@ -104,8 +115,13 @@ public class Server {
         url.addParameter("host", CommonUtils.getIpAddress());
         url.addParameter("port", String.valueOf(serverConfig.getServerPort()));
         url.addParameter("group", String.valueOf(serviceWrapper.getGroup()));
+        url.addParameter("limit", String.valueOf(serviceWrapper.getLimit()));
 
         PROVIDER_URL_SET.add(url);
+
+        if (!CommonUtils.isEmpty(serviceWrapper.getServiceToken())) {
+            PROVIDER_SERVICE_WRAPPER_MAP.put(interfaceClass.getName(), serviceWrapper);
+        }
     }
 
 
@@ -130,29 +146,34 @@ public class Server {
             default:
                 throw new RuntimeException("no match serialize type for" + serverSerialize);
         }
-        System.out.println("serverSerialize is "+serverSerialize);
+//        System.out.println("serverSerialize is "+serverSerialize);
+        SERVER_CONFIG = serverConfig;
+        ServerFilterChain serverFilterChain = new ServerFilterChain();
+        serverFilterChain.addServerFilter(new ServerLogFilterImpl());
+        serverFilterChain.addServerFilter(new ServerTokenFilterImpl());
+        SERVER_FILTER_CHAIN = serverFilterChain;
     }
 
     /**
      * 将服务注册到服务器
      * @param serviceBean
      */
-    private void registyService(Object serviceBean) {
-        // 如果这个service实现类没有接口，抛出异常
-        if (serviceBean.getClass().getInterfaces().length == 0) {
-            throw new RuntimeException("service must had interfaces! ");
-        }
-
-        // service实现类不能实现多个接口
-        Class[] interfaces = serviceBean.getClass().getInterfaces();
-        if (interfaces.length > 1) {
-            throw new RuntimeException("service must only have one interfaces!");
-        }
-
-        Class interfaceClass = interfaces[0];
-        // 需要注册的对象统一放在一个MAP集合中进行管理 接口名 -> 实现类
-        PROVIDER_CLASS_MAP.put(interfaceClass.getName(), serviceBean);
-    }
+//    private void registyService(Object serviceBean) {
+//        // 如果这个service实现类没有接口，抛出异常
+//        if (serviceBean.getClass().getInterfaces().length == 0) {
+//            throw new RuntimeException("service must had interfaces! ");
+//        }
+//
+//        // service实现类不能实现多个接口
+//        Class[] interfaces = serviceBean.getClass().getInterfaces();
+//        if (interfaces.length > 1) {
+//            throw new RuntimeException("service must only have one interfaces!");
+//        }
+//
+//        Class interfaceClass = interfaces[0];
+//        // 需要注册的对象统一放在一个MAP集合中进行管理 接口名 -> 实现类
+//        PROVIDER_CLASS_MAP.put(interfaceClass.getName(), serviceBean);
+//    }
 
     /**
      * 启动服务

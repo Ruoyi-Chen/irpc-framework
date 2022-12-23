@@ -1,7 +1,6 @@
 package org.idea.irpc.framework.core.common.event.listener;
 
 import org.idea.irpc.framework.core.common.ChannelFutureWrapper;
-import org.idea.irpc.framework.core.common.event.IRpcListener;
 import org.idea.irpc.framework.core.common.event.IrpcNodeChangeEvent;
 import org.idea.irpc.framework.core.registry.URL;
 import org.idea.irpc.framework.core.registry.zookeeper.ProviderNodeInfo;

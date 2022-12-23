@@ -1,5 +1,8 @@
 package org.idea.irpc.framework.core.common.event;
 
+import org.idea.irpc.framework.core.common.event.listener.IRpcListener;
+import org.idea.irpc.framework.core.common.event.listener.ProviderNodeDataChangeListener;
+import org.idea.irpc.framework.core.common.event.listener.ServiceDestroyListener;
 import org.idea.irpc.framework.core.common.event.listener.ServiceUpdateListener;
 import org.idea.irpc.framework.core.common.utils.CommonUtils;
 
@@ -7,7 +10,6 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -45,6 +47,8 @@ public class IRpcListenerLoader {
 
     public void init() {
         registerListener(new ServiceUpdateListener());
+        registerListener(new ServiceDestroyListener());
+        registerListener(new ProviderNodeDataChangeListener());
     }
 
     /**

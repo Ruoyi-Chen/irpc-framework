@@ -18,6 +18,7 @@ public class ChannelFutureWrapper {
      * 为了能够实现按照权重的配置，这里可以加入一个weight字段的设计。
      */
     private Integer weight;
+    private String group;
 
     public ChannelFutureWrapper(String host, Integer port,Integer weight) {
         this.host = host;

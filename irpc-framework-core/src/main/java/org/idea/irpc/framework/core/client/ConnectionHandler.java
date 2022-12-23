@@ -3,13 +3,13 @@ package org.idea.irpc.framework.core.client;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.ChannelFuture;
 import org.idea.irpc.framework.core.common.ChannelFutureWrapper;
+import org.idea.irpc.framework.core.common.protocol.RpcInvocation;
 import org.idea.irpc.framework.core.common.utils.CommonUtils;
+import org.idea.irpc.framework.core.registry.URL;
+import org.idea.irpc.framework.core.registry.zookeeper.ProviderNodeInfo;
 import org.idea.irpc.framework.core.router.Selector;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static org.idea.irpc.framework.core.common.cache.CommonClientCache.*;
@@ -55,10 +55,15 @@ public class ConnectionHandler {
         Integer port = Integer.parseInt(providerAddress[1]);
         // 将boostrap连接得到的channelFuture封装成ChannelFutureWrapper
         ChannelFuture channelFuture = bootstrap.connect(ip, port).sync();
+        String providerURLInfo = URL_MAP.get(providerServiceName).get(providerIp);
+        ProviderNodeInfo providerNodeInfo = URL.buildURLFromUrlStr(providerURLInfo);
+
         ChannelFutureWrapper channelFutureWrapper = new ChannelFutureWrapper();
         channelFutureWrapper.setChannelFuture(channelFuture);
         channelFutureWrapper.setHost(ip);
         channelFutureWrapper.setPort(port);
+        channelFutureWrapper.setWeight(providerNodeInfo.getWeight());
+        channelFutureWrapper.setGroup(providerNodeInfo.getGroup());
 
         // 将服务提供者ip放进SERVER_ADDRESS
         SERVER_ADDRESS.add(providerIp);
@@ -69,6 +74,10 @@ public class ConnectionHandler {
         }
         channelFutureWrappers.add(channelFutureWrapper);
         CONNECT_MAP.put(providerServiceName, channelFutureWrappers);
+
+        Selector selector = new Selector();
+        selector.setProviderServiceName(providerServiceName);
+        IROUTER.refreshRouterArr(selector);
     }
 
     /**
@@ -129,17 +138,24 @@ public class ConnectionHandler {
      * 在客户端和服务提供者进行连接建立的环节会触发路由层的一个refreshRouterArr函数，
      * 生成对应先后顺序的随机数组，并且将其存放在一个map集合中。
      *
-     * @param providerServiceName
      * @return
      */
-    public static ChannelFuture getChannelFuture(String providerServiceName) {
-        List<ChannelFutureWrapper> channelFutureWrappers = CONNECT_MAP.get(providerServiceName);
-        if (CommonUtils.isEmptyList(channelFutureWrappers)) {
+    public static ChannelFuture getChannelFuture(RpcInvocation rpcInvocation) {
+        String providerServiceName = rpcInvocation.getTargetServiceName();
+        ChannelFutureWrapper[] channelFutureWrappers = SERVICE_ROUTER_MAP.get(providerServiceName);
+        if (channelFutureWrappers == null || channelFutureWrappers.length == 0) {
             throw new RuntimeException("no provider exist for " + providerServiceName);
         }
+
+        /**
+         * 选择在这里插入责任链的原因是，
+         * 客户端在获取到目标方的channel集合之后需要进行筛选过滤，最终才会发起真正的请求。
+         */
+        CLIENT_FILTER_CHAIN.doFilter(Arrays.asList(channelFutureWrappers), rpcInvocation);
 //        return channelFutureWrappers.get(new Random().nextInt(channelFutureWrappers.size())).getChannelFuture();
         Selector selector = new Selector();
         selector.setProviderServiceName(providerServiceName);
+        selector.setChannelFutureWrappers(channelFutureWrappers);
         ChannelFuture channelFuture = IROUTER.select(selector).getChannelFuture();
         return channelFuture;
     }

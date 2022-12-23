@@ -9,7 +9,7 @@ import io.netty.channel.ChannelInboundHandlerAdapter;
 
 import java.lang.reflect.Method;
 
-import static org.idea.irpc.framework.core.common.cache.CommonServerCache.PROVIDER_CLASS_MAP;
+import static org.idea.irpc.framework.core.common.cache.CommonServerCache.*;
 
 /**
  * 服务处理
@@ -27,6 +27,11 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
         String json = new String(rpcProtocol.getContent(), 0, rpcProtocol.getContentLength());
         RpcInvocation rpcInvocation = JSON.parseObject(json, RpcInvocation.class);
 
+        // 执行过滤链路
+        // 在 ChannelInboundHandlerAdapter 内部加入过滤链说明此事请求数据已经落入到了server端的业务线程池中，
+        // 接下来需要通过责任链的每一个环节进行校对，最终确认是否可以执行目标函数。
+        SERVER_FILTER_CHAIN.doFilter(rpcInvocation);
+
         //这里的PROVIDER_CLASS_MAP就是一开始预先在启动时候存储的Bean集合
         // 1. 根据传来的service name，获取目标服务接口类对象
         Object aimService = PROVIDER_CLASS_MAP.get(rpcInvocation.getTargetServiceName());
@@ -40,14 +45,13 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
                     method.invoke(aimService, rpcInvocation.getArgs());
                 } else {
                     result = method.invoke(aimService, rpcInvocation.getArgs());
-
                 }
                 // 找到了要实现的方法，就可以结束了
                 break;
             }
         }
         rpcInvocation.setResponse(result);
-        RpcProtocol respRpcProtocol = new RpcProtocol(JSON.toJSONString(rpcInvocation).getBytes());
+        RpcProtocol respRpcProtocol = new RpcProtocol(SERVER_SERIALIZE_FACTORY.serialize(rpcInvocation));
         ctx.writeAndFlush(respRpcProtocol);
     }
 

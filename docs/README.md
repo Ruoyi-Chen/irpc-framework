@@ -311,8 +311,69 @@ RpcProtocol和RpcInvocation两者之间的关系设计大概如下所示：
 
 ps：网上的主流答案是kryo>hessian>fastjson>jdk
 
+# 7. 开发实战五：责任链模式
+1. 对client的请求做鉴权：请求抵达服务端调用具体方法之前，先对其调用凭证进行判断操作，如果凭证不一致则抛出异常。
+
+![img_15.png](img_15.png)
+2. 分组管理服务：如果我们将服务按照组别进行管理，A开发的UserService的group设置为dev，B开发的UserService的group设置为test，而远程调用的时候严格遵守group参数进行匹配调用，这样就能确保测试同学在调用服务的时候，不会将请求路由到A同学所写的还未完善的UserService上边了。
+
+![img_16.png](img_16.png)
+3. 如何实现基于ip直连的方式访问server端？
+按照指定ip访问的方式请求server端是我们在测试阶段会比较常见的方式，例如服务部署之后，发现2个名字相同的服务，面对相同的请求参数，在两个服务节点中返回的结果却不一样，此时就可以通过指定请求ip来进行debug诊断。
+
+![img_17.png](img_17.png)
+4. 调用过程中需要记录下调用的相关日志信息
+
+每次请求都最好能有一次请求调用的记录，方便开发者调试。日志的内容一般会关注以下几个点：调用方信息，请求的具体服务的哪个方法，请求时间。
+
+## 责任链模式
+在责任链模式中，客户只需要将请求发送到责任链上即可，无须关心请求的处理细节和请求的传递过程，所以责任链将请求的发送者和请求的处理者解耦了。
+
+**使用责任链设计模式的好处：**
+- 发送者与接收方的处理对象类之间解耦。
+- 封装每个处理对象，处理类的最小封装原则。
+- 可以任意添加处理对象，调整处理对象之间的顺序，提高了维护性和可拓展性，可以根据需求新增处理类，满足开闭原则。
+- 增强了对象职责指派的灵活性，当流程发生变化的时候，可以动态地改变链内的调动次序可动态的新增或者删除。
+- 责任链简化了对象之间的连接。每个对象只需保持一个指向其后继者的引用，不需保持其他所有处理者的引用，这避免了使用众多的 if 或者 if···else 语句。
+- 责任分担。每个类只需要处理自己该处理的工作，不该处理的传递给下一个对象完成，明确各类的责任范围，符合类的单一职责原则。
+
+![img_18.png](img_18.png)
 
 
+服务端token鉴权：目前只是基于一个简单的Map做判断依据，大致的存储关系如下图所示，可以看到这块的鉴权目前主要只是细粒度到接口级别，还没有精确到方法级别。
+
+![img_19.png](img_19.png)
+
+## Server:
+main 
+```java
+        ServiceWrapper dataServiceServiceWrapper = new ServiceWrapper(new DataServiceImpl(), "dev");
+        dataServiceServiceWrapper.setServiceToken("token-a");
+        dataServiceServiceWrapper.setLimit(2);
+        ServiceWrapper userServiceServiceWrapper = new ServiceWrapper(new UserServiceImpl(), "dev");
+        userServiceServiceWrapper.setServiceToken("token-b");
+        userServiceServiceWrapper.setLimit(2);
+        
+        server.exportService(dataServiceServiceWrapper);
+        server.exportService(userServiceServiceWrapper);
+```
+initServerConfig()
+
+![img_20.png](img_20.png)
+
+ServerHandler
+
+![img_21.png](img_21.png)
+
+## Client
+
+Client.initClientConfig()
+
+![img_23.png](img_23.png)
+
+ConnectionHandler
+
+![img_22.png](img_22.png)
 # Reference
 1. 本笔记（包括笔记中的多数图片）总结自[Java开发者的RPC实战课](https://juejin.cn/book/7047357110337667076/section/7047522878673125415?enter_from=course_center)及其评论区
 【侵删】

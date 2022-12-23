@@ -16,8 +16,8 @@ import static org.idea.irpc.framework.core.common.cache.CommonClientCache.SERVIC
 public class ChannelFuturePollingRef {
     private AtomicLong referenceTimes = new AtomicLong(0);
 
-    public ChannelFutureWrapper getChannelFutureWrapper(String serviceName) {
-        ChannelFutureWrapper[] wrappers = SERVICE_ROUTER_MAP.get(serviceName);
+    public ChannelFutureWrapper getChannelFutureWrapper(ChannelFutureWrapper[] wrappers) {
+//        ChannelFutureWrapper[] wrappers = SERVICE_ROUTER_MAP.get(serviceName);
         long i = referenceTimes.getAndIncrement();
         int idx = (int) (i % wrappers.length);
         return wrappers[idx];

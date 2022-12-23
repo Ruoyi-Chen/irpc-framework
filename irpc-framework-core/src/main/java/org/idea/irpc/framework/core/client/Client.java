@@ -18,6 +18,10 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import lombok.extern.slf4j.Slf4j;
 import org.idea.irpc.framework.core.common.utils.CommonUtils;
 import org.idea.irpc.framework.core.config.PropertiesBootstrap;
+import org.idea.irpc.framework.core.filter.client.ClientFilterChain;
+import org.idea.irpc.framework.core.filter.client.ClientLogFilterImpl;
+import org.idea.irpc.framework.core.filter.client.DirectInvokeFilterImpl;
+import org.idea.irpc.framework.core.filter.client.GroupFilterImpl;
 import org.idea.irpc.framework.core.proxy.javassist.JavassistProxyFactory;
 import org.idea.irpc.framework.core.proxy.jdk.JDKProxyFactory;
 import org.idea.irpc.framework.core.registry.URL;
@@ -83,7 +87,8 @@ public class Client {
 
         RpcReferenceWrapper<DataService> rpcReferenceWrapper = new RpcReferenceWrapper<>();
         rpcReferenceWrapper.setAimClass(DataService.class);
-        rpcReferenceWrapper.setGroup("default");
+        rpcReferenceWrapper.setGroup("dev");
+        rpcReferenceWrapper.setServiceToken("token-a");
         DataService dataService = rpcReference.get(rpcReferenceWrapper);
         client.doSubscribeService(DataService.class);
 
@@ -132,6 +137,13 @@ public class Client {
             default:
                 throw new RuntimeException("no match serialize type for " + clientSerialize);
         }
+
+        // TODO 初始化过滤链，指定过滤顺序
+        ClientFilterChain clientFilterChain = new ClientFilterChain();
+        clientFilterChain.addClientFilter(new DirectInvokeFilterImpl());
+        clientFilterChain.addClientFilter(new GroupFilterImpl());
+        clientFilterChain.addClientFilter(new ClientLogFilterImpl());
+        CLIENT_FILTER_CHAIN = clientFilterChain;
     }
 
     private RpcReference initClientApplication() {
@@ -150,6 +162,8 @@ public class Client {
         iRpcListenerLoader = new IRpcListenerLoader();
         iRpcListenerLoader.init();
         this.clientConfig = PropertiesBootstrap.loadClientConfigFromLocal();
+        CLIENT_CONFIG = this.clientConfig;
+
         RpcReference rpcReference;
         if (JAVASSIST_PROXY_TYPE.equals(clientConfig.getProxyType())) {
             rpcReference = new RpcReference(new JavassistProxyFactory());
@@ -253,7 +267,7 @@ public class Client {
 //                    String json = JSON.toJSONString(data);
 //                    RpcProtocol rpcProtocol = new RpcProtocol(json.getBytes());
                     RpcProtocol rpcProtocol = new RpcProtocol(CLIENT_SERIALIZE_FACTORY.serialize(data));
-                    ChannelFuture channelFuture = ConnectionHandler.getChannelFuture(data.getTargetServiceName());
+                    ChannelFuture channelFuture = ConnectionHandler.getChannelFuture(data);
                     // netty的通道负责发送数据到服务端
                     channelFuture.channel().writeAndFlush(rpcProtocol);
                 } catch (InterruptedException e) {

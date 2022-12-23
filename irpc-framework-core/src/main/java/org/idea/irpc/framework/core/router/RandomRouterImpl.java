@@ -29,6 +29,11 @@ public class RandomRouterImpl implements IRouter{
             arr[i] = channelFutureWrappers.get(result[i]);
         }
         SERVICE_ROUTER_MAP.put(selector.getProviderServiceName(), arr);
+
+        URL url = new URL();
+        url.setServiceName(selector.getProviderServiceName());
+        // 更新权重
+        IROUTER.updateWeight(url);
     }
 
     private int[] createRandomIndex(int length) {
@@ -65,7 +70,7 @@ public class RandomRouterImpl implements IRouter{
         /**
          * 在服务的初始化阶段，程序内部自动将下一次需要调用的服务信息存放在了一个Cache集合中
          */
-        return CHANNEL_FUTURE_POLLING_REF.getChannelFutureWrapper(selector.getProviderServiceName());
+        return CHANNEL_FUTURE_POLLING_REF.getChannelFutureWrapper(selector.getChannelFutureWrappers());
     }
 
     /**
