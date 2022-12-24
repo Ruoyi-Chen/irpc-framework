@@ -14,21 +14,28 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import lombok.extern.slf4j.Slf4j;
+import org.idea.irpc.framework.core.filter.IServerFilter;
 import org.idea.irpc.framework.core.filter.server.ServerFilterChain;
 import org.idea.irpc.framework.core.filter.server.ServerLogFilterImpl;
 import org.idea.irpc.framework.core.filter.server.ServerTokenFilterImpl;
-import org.idea.irpc.framework.core.registry.RegistryService;
-import org.idea.irpc.framework.core.registry.URL;
-import org.idea.irpc.framework.core.registry.zookeeper.ZookeeperRegister;
+import org.idea.irpc.framework.core.registy.RegistryService;
+import org.idea.irpc.framework.core.registy.URL;
+import org.idea.irpc.framework.core.registy.zookeeper.ZookeeperRegister;
+import org.idea.irpc.framework.core.serialize.SerializeFactory;
 import org.idea.irpc.framework.core.serialize.fastjson.FastJsonSerializeFactory;
 import org.idea.irpc.framework.core.serialize.hessian.HessianSerializeFactory;
 import org.idea.irpc.framework.core.serialize.jdk.JdkSerializeFactory;
 import org.idea.irpc.framework.core.serialize.kryo.KryoSerializeFactory;
 
+import java.io.IOException;
+import java.util.LinkedHashMap;
+
+import static org.idea.irpc.framework.core.common.cache.CommonClientCache.EXTENSION_LOADER;
 import static org.idea.irpc.framework.core.common.cache.CommonServerCache.*;
 import static org.idea.irpc.framework.core.common.cache.CommonServerCache.SERVER_SERIALIZE_FACTORY;
 import static org.idea.irpc.framework.core.common.constants.RpcConstants.*;
 import static org.idea.irpc.framework.core.common.constants.RpcConstants.KRYO_SERIALIZE_TYPE;
+import static org.idea.irpc.framework.core.spi.ExtensionLoader.EXTENSION_LOADER_CLASS_CACHE;
 
 @Slf4j
 public class Server {
@@ -63,7 +70,7 @@ public class Server {
      */
     private static EventLoopGroup workerGroup = null;
 
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) throws InterruptedException, IOException, ClassNotFoundException, InstantiationException, IllegalAccessException {
         // 1. 初始化server
         Server server = new Server();
 
@@ -102,7 +109,14 @@ public class Server {
             throw new RuntimeException("service must only had one interface");
         }
         if (REGISTRY_SERVICE == null) {
-            REGISTRY_SERVICE = new ZookeeperRegister(serverConfig.getRegisterAddr());
+            try {
+                EXTENSION_LOADER.loadExtension(RegistryService.class);
+                LinkedHashMap<String, Class> registryClassMap = EXTENSION_LOADER_CLASS_CACHE.get(RegistryService.class.getName());
+                Class registryClass = registryClassMap.get(serverConfig.getRegisterType());
+                REGISTRY_SERVICE = (RegistryService) registryClass.newInstance();
+            } catch (Exception e) {
+                throw new RuntimeException("registryServiceType unKnow,error is ", e);
+            }
         }
 
         // 默认选择该对象的第一个实现接口
@@ -126,32 +140,58 @@ public class Server {
 
 
 
-    private void initServerConfig() {
+    private void initServerConfig() throws IOException, ClassNotFoundException, InstantiationException, IllegalAccessException {
         ServerConfig serverConfig = PropertiesBootstrap.loadServerConfigFromLocal();
         this.setServerConfig(serverConfig);
-        String serverSerialize = serverConfig.getServerSerialize();
-        switch (serverSerialize) {
-            case JDK_SERIALIZE_TYPE:
-                SERVER_SERIALIZE_FACTORY = new JdkSerializeFactory();
-                break;
-            case FAST_JSON_SERIALIZE_TYPE:
-                SERVER_SERIALIZE_FACTORY = new FastJsonSerializeFactory();
-                break;
-            case HESSIAN2_SERIALIZE_TYPE:
-                SERVER_SERIALIZE_FACTORY = new HessianSerializeFactory();
-                break;
-            case KRYO_SERIALIZE_TYPE:
-                SERVER_SERIALIZE_FACTORY = new KryoSerializeFactory();
-                break;
-            default:
-                throw new RuntimeException("no match serialize type for" + serverSerialize);
-        }
-//        System.out.println("serverSerialize is "+serverSerialize);
         SERVER_CONFIG = serverConfig;
+
+        // 序列化技术初始化
+        String serverSerialize = serverConfig.getServerSerialize();
+        EXTENSION_LOADER.loadExtension(SerializeFactory.class);
+        LinkedHashMap<String, Class> serializeFactoryClassMap = EXTENSION_LOADER_CLASS_CACHE.get(SerializeFactory.class.getName());
+        Class serializeFactoryClass = serializeFactoryClassMap.get(serverSerialize);
+        if (serializeFactoryClass == null) {
+            throw new RuntimeException("no match serialize type for " + serverSerialize);
+        }
+        SERVER_SERIALIZE_FACTORY = (SerializeFactory) serializeFactoryClass.newInstance();
+
+        // 过滤链技术初始化
+        EXTENSION_LOADER.loadExtension(IServerFilter.class);
+        LinkedHashMap<String, Class> iServerFilterClassMap = EXTENSION_LOADER_CLASS_CACHE.get(IServerFilter.class.getName());
         ServerFilterChain serverFilterChain = new ServerFilterChain();
-        serverFilterChain.addServerFilter(new ServerLogFilterImpl());
-        serverFilterChain.addServerFilter(new ServerTokenFilterImpl());
+        for (String iServerFilterKey : iServerFilterClassMap.keySet()) {
+            Class iServerFilterClass = iServerFilterClassMap.get(iServerFilterKey);
+            if (iServerFilterClass == null) {
+                throw new RuntimeException("no match iServerFilter type for " + iServerFilterKey);
+            }
+            serverFilterChain.addServerFilter((IServerFilter) iServerFilterClass.newInstance());
+        }
         SERVER_FILTER_CHAIN = serverFilterChain;
+//        ServerConfig serverConfig = PropertiesBootstrap.loadServerConfigFromLocal();
+//        this.setServerConfig(serverConfig);
+//        String serverSerialize = serverConfig.getServerSerialize();
+//        switch (serverSerialize) {
+//            case JDK_SERIALIZE_TYPE:
+//                SERVER_SERIALIZE_FACTORY = new JdkSerializeFactory();
+//                break;
+//            case FAST_JSON_SERIALIZE_TYPE:
+//                SERVER_SERIALIZE_FACTORY = new FastJsonSerializeFactory();
+//                break;
+//            case HESSIAN2_SERIALIZE_TYPE:
+//                SERVER_SERIALIZE_FACTORY = new HessianSerializeFactory();
+//                break;
+//            case KRYO_SERIALIZE_TYPE:
+//                SERVER_SERIALIZE_FACTORY = new KryoSerializeFactory();
+//                break;
+//            default:
+//                throw new RuntimeException("no match serialize type for" + serverSerialize);
+//        }
+////        System.out.println("serverSerialize is "+serverSerialize);
+//        SERVER_CONFIG = serverConfig;
+//        ServerFilterChain serverFilterChain = new ServerFilterChain();
+//        serverFilterChain.addServerFilter(new ServerLogFilterImpl());
+//        serverFilterChain.addServerFilter(new ServerTokenFilterImpl());
+//        SERVER_FILTER_CHAIN = serverFilterChain;
     }
 
     /**
@@ -207,6 +247,7 @@ public class Server {
         });
         this.batchExportUrl();
         bootstrap.bind(serverConfig.getServerPort()).sync();
+        IS_STARTED = true;
     }
 
     /**

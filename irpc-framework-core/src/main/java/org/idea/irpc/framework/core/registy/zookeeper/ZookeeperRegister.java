@@ -1,4 +1,4 @@
-package org.idea.irpc.framework.core.registry.zookeeper;
+package org.idea.irpc.framework.core.registy.zookeeper;
 
 import com.alibaba.fastjson.JSON;
 import org.apache.zookeeper.WatchedEvent;
@@ -8,13 +8,17 @@ import org.idea.irpc.framework.core.common.event.IRpcListenerLoader;
 import org.idea.irpc.framework.core.common.event.IRpcUpdateEvent;
 import org.idea.irpc.framework.core.common.event.IrpcNodeChangeEvent;
 import org.idea.irpc.framework.core.common.event.data.URLChangeWrapper;
-import org.idea.irpc.framework.core.registry.RegistryService;
-import org.idea.irpc.framework.core.registry.URL;
+import org.idea.irpc.framework.core.registy.RegistryService;
+import org.idea.irpc.framework.core.registy.URL;
 import org.idea.irpc.framework.interfaces.DataService;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import static org.idea.irpc.framework.core.common.cache.CommonClientCache.CLIENT_CONFIG;
+import static org.idea.irpc.framework.core.common.cache.CommonServerCache.IS_STARTED;
+import static org.idea.irpc.framework.core.common.cache.CommonServerCache.SERVER_CONFIG;
 
 /**
  * @Author : Ruoyi Chen
@@ -32,6 +36,11 @@ public class ZookeeperRegister extends AbstractRegister implements RegistryServi
 
     private String getConsumerPath(URL url) {
         return ROOT + "/" + url.getServiceName() + "/consumer/" + url.getApplicationName() + ":" + url.getParameters().get("host")+":";
+    }
+
+    public ZookeeperRegister() {
+        String address = CLIENT_CONFIG != null ? CLIENT_CONFIG.getRegisterAddr() : SERVER_CONFIG.getRegisterAddr();
+        this.zkClient = new CuratorZookeeperClient(address);
     }
 
     public ZookeeperRegister(String address) {
@@ -76,6 +85,9 @@ public class ZookeeperRegister extends AbstractRegister implements RegistryServi
 
     @Override
     public void unRegister(URL url) {
+        if (!IS_STARTED){
+            return;
+        }
         zkClient.deleteNode(getProviderPath(url));
         super.unRegister(url);
     }

@@ -1,0 +1,2 @@
+serverLogFilterImpl=org.idea.irpc.framework.core.filter.server.ServerLogFilterImpl
+serverTokenFilterImpl=org.idea.irpc.framework.core.filter.server.ServerTokenFilterImpl

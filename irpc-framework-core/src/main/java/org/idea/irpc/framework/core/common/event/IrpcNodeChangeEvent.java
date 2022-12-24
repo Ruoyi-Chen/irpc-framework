@@ -1,7 +1,5 @@
 package org.idea.irpc.framework.core.common.event;
 
-import org.idea.irpc.framework.core.registry.zookeeper.ProviderNodeInfo;
-
 /**
  * @Author : Ruoyi Chen
  * @create 2022/12/21 16:43

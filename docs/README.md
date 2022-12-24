@@ -374,8 +374,45 @@ Client.initClientConfig()
 ConnectionHandler
 
 ![img_22.png](img_22.png)
+
+
+# 8. 开发实战六：SPI机制实现可插拔式组件
+SPI 的全称叫做：Service Provider Interface，它是一种通过外界配置来加载具体代码内容的技术手段。
+常见的实现思路是：在统一规定的文件目录底下，新建一份文件，并在该文件内部定义好需要加载的类，让核心程序在不做内部源代码修改的条件下可以引入执行的代码逻辑。
+
+JDK内置提供的ServiceLoader会自动帮助我们去加载/META-INF/services/目录下边的文件，并且将其转换为具体实现类。
+org.idea.irpc.framework.core.spi.jdk.ISpiTest
+
+JDK内部的ServiceLoader加载流程大致为：
+* 调用load函数
+* ->再调用到reload方法， 并且在reload方法里面触发一个叫做LazyIterator的类， 这个类实现了迭代器的Iterator接口。
+  
+```java
+public void reload() {
+     providers.clear();
+     lookupIterator = new LazyIterator(service, loader);
+}
+```
+
+当外界使用SPI迭代器的时候会触发到iterator函数，于是最终便会触发到了java.util.ServiceLoader.LazyIterator#hasNextService内部，这里头会将spi配置文件的内容加载到内存，但是此时还没有触发到class对象的初始化。
+
+![img_24.png](img_24.png)
+
+
+当测试程序执行到了：ISpiTest iSpiTest = iSpiTestIterator.next();这一部分内容的时候才会触发到具体的类实例化。下图是JDK1.8内部的源代码，位置在java.util.ServiceLoader.LazyIterator#nextService中。
+
+![img_25.png](img_25.png)
+
+当年JDK内置了SPI机制之后，一些数据库驱动包便开始广泛采用了此类技术。例如MySQL的链接驱动包中便采用了这类设计。
+
+虽然看起来这套SPI机制使用会比较方便，但是依然存在一些问题：
+1. 在 META-INF/service 下的配置中如果存在 N个实现类，采用JDK自带的SPI机制会一次性将它们进行初始化加载。在加载的过程中如果涉及到了一些比较耗时的操作，会非常浪费资源。
+2. 如果扩展点加载失败，会导致调用方报错，而且这个错误很难定位到是这个原因 。
+
+除了实例化延迟之外，在SPI的配置文件规则方面借鉴了Dubbo内部的key-value设计风格。key是我们可以在外界对irpc.properties配置文件中所指定的关键字，而value则是对应的接口实现类名称。
+
 # Reference
-1. 本笔记（包括笔记中的多数图片）总结自[Java开发者的RPC实战课](https://juejin.cn/book/7047357110337667076/section/7047522878673125415?enter_from=course_center)及其评论区
+1. 本笔记（包括笔记中的多数图片）自[Java开发者的RPC实战课](https://juejin.cn/book/7047357110337667076/section/7047522878673125415?enter_from=course_center)及其评论区
 【侵删】
 2. [select/poll/epoll模型视频讲](https://www.bilibili.com/video/BV1qJ411w7du/?spm_id_from=333.337.search-card.all.click&vd_source=4e49ce85218facdc8b33777e905fe1dc)
-3. [Zookeeper 入门](ht解tps://zhuanlan.zhihu.com/p/158986527)
+3. [Zookeeper 入门](https://zhuanlan.zhihu.com/p/158986527)

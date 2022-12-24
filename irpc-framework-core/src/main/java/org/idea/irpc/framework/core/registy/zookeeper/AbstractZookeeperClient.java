@@ -1,4 +1,4 @@
-package org.idea.irpc.framework.core.registry.zookeeper;
+package org.idea.irpc.framework.core.registy.zookeeper;
 
 
 import org.apache.zookeeper.Watcher;

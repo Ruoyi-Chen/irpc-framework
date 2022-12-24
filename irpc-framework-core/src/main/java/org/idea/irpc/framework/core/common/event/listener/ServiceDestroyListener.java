@@ -1,7 +1,7 @@
 package org.idea.irpc.framework.core.common.event.listener;
 
 import org.idea.irpc.framework.core.common.event.IRpcDestroyEvent;
-import org.idea.irpc.framework.core.registry.URL;
+import org.idea.irpc.framework.core.registy.URL;
 
 import static org.idea.irpc.framework.core.common.cache.CommonServerCache.PROVIDER_URL_SET;
 import static org.idea.irpc.framework.core.common.cache.CommonServerCache.REGISTRY_SERVICE;

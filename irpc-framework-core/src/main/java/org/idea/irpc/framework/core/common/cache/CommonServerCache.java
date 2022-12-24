@@ -2,8 +2,8 @@ package org.idea.irpc.framework.core.common.cache;
 
 import org.idea.irpc.framework.core.config.ServerConfig;
 import org.idea.irpc.framework.core.filter.server.ServerFilterChain;
-import org.idea.irpc.framework.core.registry.RegistryService;
-import org.idea.irpc.framework.core.registry.URL;
+import org.idea.irpc.framework.core.registy.RegistryService;
+import org.idea.irpc.framework.core.registy.URL;
 import org.idea.irpc.framework.core.serialize.SerializeFactory;
 import org.idea.irpc.framework.core.server.ServiceWrapper;
 
@@ -31,5 +31,5 @@ public class CommonServerCache {
     public static ServerFilterChain SERVER_FILTER_CHAIN;
     public static final Map<String, ServiceWrapper> PROVIDER_SERVICE_WRAPPER_MAP = new ConcurrentHashMap<>();
 
-
+    public static Boolean IS_STARTED = false;
 }

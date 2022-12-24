@@ -2,8 +2,8 @@ package org.idea.irpc.framework.core.common.event.listener;
 
 import org.idea.irpc.framework.core.common.ChannelFutureWrapper;
 import org.idea.irpc.framework.core.common.event.IrpcNodeChangeEvent;
-import org.idea.irpc.framework.core.registry.URL;
-import org.idea.irpc.framework.core.registry.zookeeper.ProviderNodeInfo;
+import org.idea.irpc.framework.core.registy.URL;
+import org.idea.irpc.framework.core.registy.zookeeper.ProviderNodeInfo;
 
 import java.util.List;
 

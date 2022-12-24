@@ -1,7 +1,7 @@
-package org.idea.irpc.framework.core.registry;
+package org.idea.irpc.framework.core.registy;
 
 import lombok.Data;
-import org.idea.irpc.framework.core.registry.zookeeper.ProviderNodeInfo;
+import org.idea.irpc.framework.core.registy.zookeeper.ProviderNodeInfo;
 
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
@@ -65,10 +65,14 @@ public class URL {
      * @return
      */
     public static ProviderNodeInfo buildURLFromUrlStr(String providerNodeStr) {
-        String[] items = providerNodeStr.split("/");
+        String[] items = providerNodeStr.split(";");
         ProviderNodeInfo providerNodeInfo = new ProviderNodeInfo();
-        providerNodeInfo.setServiceName(items[2]);
-        providerNodeInfo.setAddress(items[4]);
+        providerNodeInfo.setApplicationName(items[0]);
+        providerNodeInfo.setServiceName(items[1]);
+        providerNodeInfo.setAddress(items[2]);
+        providerNodeInfo.setRegistryTime(items[3]);
+        providerNodeInfo.setWeight(Integer.valueOf(items[4]));
+        providerNodeInfo.setGroup(String.valueOf(items[5]));
         return providerNodeInfo;
     }
 }

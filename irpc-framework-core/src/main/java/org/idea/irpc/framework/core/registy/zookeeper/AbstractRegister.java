@@ -1,7 +1,7 @@
-package org.idea.irpc.framework.core.registry.zookeeper;
+package org.idea.irpc.framework.core.registy.zookeeper;
 
-import org.idea.irpc.framework.core.registry.RegistryService;
-import org.idea.irpc.framework.core.registry.URL;
+import org.idea.irpc.framework.core.registy.RegistryService;
+import org.idea.irpc.framework.core.registy.URL;
 
 import java.util.List;
 import java.util.Map;

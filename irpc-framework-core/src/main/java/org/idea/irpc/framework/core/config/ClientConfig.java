@@ -9,4 +9,5 @@ public class ClientConfig {
     private String proxyType;
     private String routerStrategy;
     private String clientSerialize;
+    private String registerType;
 }

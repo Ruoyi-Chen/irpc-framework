@@ -1,4 +1,4 @@
-package org.idea.irpc.framework.core.registry;
+package org.idea.irpc.framework.core.registy;
 
 
 /**

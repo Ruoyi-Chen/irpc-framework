@@ -5,8 +5,8 @@ import io.netty.channel.ChannelFuture;
 import org.idea.irpc.framework.core.common.ChannelFutureWrapper;
 import org.idea.irpc.framework.core.common.protocol.RpcInvocation;
 import org.idea.irpc.framework.core.common.utils.CommonUtils;
-import org.idea.irpc.framework.core.registry.URL;
-import org.idea.irpc.framework.core.registry.zookeeper.ProviderNodeInfo;
+import org.idea.irpc.framework.core.registy.URL;
+import org.idea.irpc.framework.core.registy.zookeeper.ProviderNodeInfo;
 import org.idea.irpc.framework.core.router.Selector;
 
 import java.util.*;
