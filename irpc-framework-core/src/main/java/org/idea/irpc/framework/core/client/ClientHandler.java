@@ -24,9 +24,16 @@ public class ClientHandler extends ChannelInboundHandlerAdapter {
         RpcProtocol rpcProtocol = (RpcProtocol) msg;
         // 传输参数更为详细的RpcInvocation对象的字节数组
         byte[] content = rpcProtocol.getContent();
-        String json = new String(content, 0, content.length);
+//        String json = new String(content, 0, content.length);
 //        RpcInvocation rpcInvocation = JSON.parseObject(json, RpcInvocation.class);
         RpcInvocation rpcInvocation = CLIENT_SERIALIZE_FACTORY.deserialize(content, RpcInvocation.class);
+
+        // 如果单纯异步模式的话，响应map集合中不会存在映射值
+        Object r = rpcInvocation.getAttachments().get("async");
+        if (r != null && Boolean.valueOf(String.valueOf(r))) {
+            ReferenceCountUtil.release(msg);
+            return;
+        }
 
         // 通过之前发送的uuid来注入匹配的响应数值
         if (!RESP_MAP.containsKey(rpcInvocation.getUuid())) {

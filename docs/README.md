@@ -411,6 +411,20 @@ public void reload() {
 
 除了实例化延迟之外，在SPI的配置文件规则方面借鉴了Dubbo内部的key-value设计风格。key是我们可以在外界对irpc.properties配置文件中所指定的关键字，而value则是对应的接口实现类名称。
 
+
+# 9. 提高系统并发承载能力
+
+当前系统：
+![img_26.png](img_26.png)
+
+当前我们的org.idea.irpc.framework.core.server.ServerHandler类存在着一个重大的性能瓶颈问题，那就是一旦出现堵塞，将会影响其他服务的远程调用。
+
+为了尽量避免出现请求堵塞，我们可以尝试采用异步消费的思路来解决这种问题。
+
+![img_27.png](img_27.png)
+
+
+
 # Reference
 1. 本笔记（包括笔记中的多数图片）自[Java开发者的RPC实战课](https://juejin.cn/book/7047357110337667076/section/7047522878673125415?enter_from=course_center)及其评论区
 【侵删】

@@ -11,6 +11,7 @@ import java.util.concurrent.TimeoutException;
 
 import static org.idea.irpc.framework.core.common.cache.CommonClientCache.RESP_MAP;
 import static org.idea.irpc.framework.core.common.cache.CommonClientCache.SEND_QUEUE;
+import static org.idea.irpc.framework.core.common.constants.RpcConstants.DEFAULT_TIMEOUT;
 
 /**
  * 每一个动态代理类都必须要实现InvocationHandler这个接口，
@@ -22,10 +23,11 @@ import static org.idea.irpc.framework.core.common.cache.CommonClientCache.SEND_Q
 @Slf4j
 public class JDKClientInvocationHandler implements InvocationHandler {
     private final static Object OBJECT = new Object();
-
+    private int timeOut = DEFAULT_TIMEOUT;
     private RpcReferenceWrapper rpcReferenceWrapper;
     public JDKClientInvocationHandler(RpcReferenceWrapper rpcReferenceWrapper) {
         this.rpcReferenceWrapper = rpcReferenceWrapper;
+        timeOut = Integer.valueOf(String.valueOf(rpcReferenceWrapper.getAttatchments().get("timeOut")));
     }
 
     /**
@@ -38,16 +40,20 @@ public class JDKClientInvocationHandler implements InvocationHandler {
         rpcInvocation.setArgs(args);
         rpcInvocation.setTargetMethod(method.getName());
         rpcInvocation.setTargetServiceName(rpcReferenceWrapper.getAimClass().getName());
-
-
-        // 注入uuid，对每一次请求都做单独区分
         rpcInvocation.setUuid(UUID.randomUUID().toString());
-        RESP_MAP.put(rpcInvocation.getUuid(), OBJECT);
+        rpcInvocation.setAttachments(rpcReferenceWrapper.getAttatchments());
+
 
         // 将请求参数放入到发送队列
         SEND_QUEUE.add(rpcInvocation);
-        log.info("Sending: {}", rpcInvocation);
+
+        // 注入uuid，对每一次请求都做单独区分
+        if (rpcReferenceWrapper.isAsync()) {
+            return null;
+        }
+        RESP_MAP.put(rpcInvocation.getUuid(), OBJECT);
         // 客户端请求超时的判断依据
+        // 如果这里有多个io线程负责监听消息信息，是否效率会更高呢？
         long beginTime = System.currentTimeMillis();
         while (System.currentTimeMillis() - beginTime < 3*1000) {
             Object object = RESP_MAP.get(rpcInvocation.getUuid());
@@ -55,6 +61,6 @@ public class JDKClientInvocationHandler implements InvocationHandler {
                 return ((RpcInvocation)object).getResponse();
             }
         }
-        throw new TimeoutException("client wait server's response timeout!");
+        throw new TimeoutException("wait for response from server on client " + timeOut + "ms!");
     }
 }

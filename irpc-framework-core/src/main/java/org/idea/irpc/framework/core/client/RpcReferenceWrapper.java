@@ -32,8 +32,15 @@ public class RpcReferenceWrapper<T> {
         this.aimClass = aimClass;
     }
 
-    public boolean isAsync(){
-        return Boolean.valueOf(String.valueOf(attatchments.get("async")));
+//    public boolean isAsync(){
+//        return Boolean.valueOf(String.valueOf(attatchments.get("async")));
+//    }
+    public boolean isAsync() {
+        Object r = attatchments.get("async");
+        if (r == null) {
+            return false;
+        }
+        return Boolean.valueOf(true);
     }
 
     public void setAsync(boolean async){
@@ -72,4 +79,11 @@ public class RpcReferenceWrapper<T> {
         this.attatchments = attatchments;
     }
 
+    public void setTimeOut(int timeOut) {
+        attatchments.put("timeOut", timeOut);
+    }
+
+    public String getTimeOUt() {
+        return String.valueOf(attatchments.get("timeOut"));
+    }
 }

@@ -2,6 +2,7 @@ package org.idea.irpc.framework.core.proxy.javassist;
 
 import org.idea.irpc.framework.core.client.RpcReferenceWrapper;
 import org.idea.irpc.framework.core.common.protocol.RpcInvocation;
+import org.idea.irpc.framework.core.filter.IFilter;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
@@ -10,6 +11,7 @@ import java.util.concurrent.TimeoutException;
 
 import static org.idea.irpc.framework.core.common.cache.CommonClientCache.RESP_MAP;
 import static org.idea.irpc.framework.core.common.cache.CommonClientCache.SEND_QUEUE;
+import static org.idea.irpc.framework.core.common.constants.RpcConstants.DEFAULT_TIMEOUT;
 
 /**
  * @Author : Ruoyi Chen
@@ -19,10 +21,12 @@ public class JavassistInvocationHandler implements InvocationHandler {
 
 
     private final static Object OBJECT = new Object();
-
+    private Long timeOut = Long.valueOf(DEFAULT_TIMEOUT);
     private RpcReferenceWrapper rpcReferenceWrapper;
+
     public JavassistInvocationHandler(RpcReferenceWrapper rpcReferenceWrapper) {
         this.rpcReferenceWrapper = rpcReferenceWrapper;
+        timeOut = Long.valueOf(String.valueOf(rpcReferenceWrapper.getAttatchments().get("timeOut")));
     }
 
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
@@ -30,19 +34,26 @@ public class JavassistInvocationHandler implements InvocationHandler {
         rpcInvocation.setArgs(args);
         rpcInvocation.setTargetMethod(method.getName());
         rpcInvocation.setTargetServiceName(rpcReferenceWrapper.getAimClass().getName());
-
+        rpcInvocation.setAttachments(rpcReferenceWrapper.getAttatchments());
         rpcInvocation.setUuid(UUID.randomUUID().toString());
-        RESP_MAP.put(rpcInvocation.getUuid(), OBJECT);
+
         //代理类内部将请求放入到发送队列中，等待发送队列发送请求
         SEND_QUEUE.add(rpcInvocation);
+
+        // 既然是异步请求，就没有必要在RESP_MAP中判断是否有响应结果了
+        if (rpcReferenceWrapper.isAsync()) {
+            return null;
+        }
+        RESP_MAP.put(rpcInvocation.getUuid(), OBJECT);
+
         long beginTime = System.currentTimeMillis();
         //如果请求数据在指定时间内返回则返回给客户端调用方
-        while (System.currentTimeMillis() - beginTime < 3*10000) {
+        while (System.currentTimeMillis() - beginTime < timeOut) {
             Object object = RESP_MAP.get(rpcInvocation.getUuid());
             if (object instanceof RpcInvocation) {
                 return ((RpcInvocation)object).getResponse();
             }
         }
-        throw new TimeoutException("org.idea.irpc.framework.core.client wait org.idea.irpc.framework.core.server's response timeout!");
+        throw new TimeoutException("client wait server's response" + timeOut + " timeout!");
     }
 }

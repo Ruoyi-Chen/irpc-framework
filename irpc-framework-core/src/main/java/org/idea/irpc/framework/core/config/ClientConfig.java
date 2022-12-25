@@ -10,4 +10,8 @@ public class ClientConfig {
     private String routerStrategy;
     private String clientSerialize;
     private String registerType;
+    /**
+     * 客户端发数据的超时时间
+     */
+    private Integer timeOut;
 }
