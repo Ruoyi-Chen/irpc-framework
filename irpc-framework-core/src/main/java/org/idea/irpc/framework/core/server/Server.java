@@ -1,5 +1,10 @@
 package org.idea.irpc.framework.core.server;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
+import io.netty.handler.codec.DelimiterBasedFrameDecoder;
+import org.idea.irpc.framework.core.common.SPI;
+import org.idea.irpc.framework.core.common.ServerServiceSemaphoreWrapper;
 import org.idea.irpc.framework.core.common.event.IRpcListenerLoader;
 import org.idea.irpc.framework.core.common.protocol.RpcDecoder;
 import org.idea.irpc.framework.core.common.protocol.RpcEncoder;
@@ -32,7 +37,7 @@ import java.util.LinkedHashMap;
 
 import static org.idea.irpc.framework.core.common.cache.CommonClientCache.EXTENSION_LOADER;
 import static org.idea.irpc.framework.core.common.cache.CommonServerCache.*;
-import static org.idea.irpc.framework.core.common.cache.CommonServerCache.SERVER_SERIALIZE_FACTORY;
+import static org.idea.irpc.framework.core.common.cache.CommonServerCache.SERVER_BEFORE_FILTER_CHAIN;
 import static org.idea.irpc.framework.core.common.constants.RpcConstants.*;
 import static org.idea.irpc.framework.core.common.constants.RpcConstants.KRYO_SERIALIZE_TYPE;
 import static org.idea.irpc.framework.core.spi.ExtensionLoader.EXTENSION_LOADER_CLASS_CACHE;
@@ -55,18 +60,18 @@ public class Server {
 
     /**
      * 用于接收客户端请求的线程池职责如下：
-     *      接收客户端TCP连接，初始化Channel参数；
-     *      将链路状态变更事件通知给ChannelPipeline；
+     * 接收客户端TCP连接，初始化Channel参数；
+     * 将链路状态变更事件通知给ChannelPipeline；
      */
     private static EventLoopGroup bossGroup = null;
 
     /**
      * https://www.cnblogs.com/duanxz/p/3724395.html
      * 处理IO操作的线程池职责如下：
-     *      异步读取远端数据，发送读事件到ChannelPipeline；
-     *      异步发送数据到远端，调用ChannelPipeline的发送消息接口；
-     *      执行系统调用Task；
-     *      执行定时任务Task，如空闲链路检测等；
+     * 异步读取远端数据，发送读事件到ChannelPipeline；
+     * 异步发送数据到远端，调用ChannelPipeline的发送消息接口；
+     * 执行系统调用Task；
+     * 执行定时任务Task，如空闲链路检测等；
      */
     private static EventLoopGroup workerGroup = null;
 
@@ -131,13 +136,15 @@ public class Server {
         url.addParameter("group", String.valueOf(serviceWrapper.getGroup()));
         url.addParameter("limit", String.valueOf(serviceWrapper.getLimit()));
 
+        //设置服务端的限流器
+        SERVER_SERVICE_SEMAPHORE_MAP.put(interfaceClass.getName(), new ServerServiceSemaphoreWrapper(serviceWrapper.getLimit()));
+
         PROVIDER_URL_SET.add(url);
 
         if (!CommonUtils.isEmpty(serviceWrapper.getServiceToken())) {
             PROVIDER_SERVICE_WRAPPER_MAP.put(interfaceClass.getName(), serviceWrapper);
         }
     }
-
 
 
     private void initServerConfig() throws IOException, ClassNotFoundException, InstantiationException, IllegalAccessException {
@@ -161,15 +168,25 @@ public class Server {
         // 过滤链技术初始化
         EXTENSION_LOADER.loadExtension(IServerFilter.class);
         LinkedHashMap<String, Class> iServerFilterClassMap = EXTENSION_LOADER_CLASS_CACHE.get(IServerFilter.class.getName());
-        ServerFilterChain serverFilterChain = new ServerFilterChain();
+//        ServerFilterChain serverFilterChain = new ServerFilterChain();
+        ServerBeforeFilterChain serverBeforeFilterChain = new ServerBeforeFilterChain();
+        ServerAfterFilterChain serverAfterFilterChain = new ServerAfterFilterChain();
         for (String iServerFilterKey : iServerFilterClassMap.keySet()) {
             Class iServerFilterClass = iServerFilterClassMap.get(iServerFilterKey);
             if (iServerFilterClass == null) {
                 throw new RuntimeException("no match iServerFilter type for " + iServerFilterKey);
             }
-            serverFilterChain.addServerFilter((IServerFilter) iServerFilterClass.newInstance());
+            SPI spi = (SPI) iServerFilterClass.getDeclaredAnnotation(SPI.class);
+            if (spi != null && "before".equals(spi.value())) {
+                serverBeforeFilterChain.addServerFilter((IServerFilter) iServerFilterClass.newInstance());
+            } else if (spi != null && "after".equals(spi.value())) {
+                serverAfterFilterChain.addServerFilter((IServerFilter) iServerFilterClass.newInstance());
+            }
+            SERVER_AFTER_FILTER_CHAIN = serverAfterFilterChain;
+            SERVER_BEFORE_FILTER_CHAIN = serverBeforeFilterChain;
+//            serverFilterChain.addServerFilter((IServerFilter) iServerFilterClass.newInstance());
         }
-        SERVER_FILTER_CHAIN = serverFilterChain;
+//        SERVER_FILTER_CHAIN = serverFilterChain;
 //        ServerConfig serverConfig = PropertiesBootstrap.loadServerConfigFromLocal();
 //        this.setServerConfig(serverConfig);
 //        String serverSerialize = serverConfig.getServerSerialize();
@@ -220,13 +237,12 @@ public class Server {
 
     /**
      * 启动服务
-     *  在创建ServerBootstrap类实例前，
-     *  先创建两个EventLoopGroup，它们实际上是两个独立的Reactor线程池，
-     *  bossGroup负责接收客户端的连接，
-     *  workerGroup负责处理IO相关的读写操作，或者执行系统task、定时task等。
-     *
+     * 在创建ServerBootstrap类实例前，
+     * 先创建两个EventLoopGroup，它们实际上是两个独立的Reactor线程池，
+     * bossGroup负责接收客户端的连接，
+     * workerGroup负责处理IO相关的读写操作，或者执行系统task、定时task等。
+     * <p>
      * ChannelOptions: https://netty.io/4.1/api/io/netty/channel/ChannelOption.html
-     *
      */
     private void startApplication() throws InterruptedException {
         bossGroup = new NioEventLoopGroup();
@@ -239,10 +255,16 @@ public class Server {
         bootstrap.option(ChannelOption.SO_SNDBUF, 16 * 1024)
                 .option(ChannelOption.SO_RCVBUF, 16 * 1024)
                 .option(ChannelOption.SO_KEEPALIVE, true);
+
+        // 服务端采用单一长连接的模式，这里所支持的最大连接数应该和机器本身的性能有关
+        // 连接防护的handler应该绑定在Main-Reactor上
+        bootstrap.handler(new MaxConnectionLimitHandler(serverConfig.getMaxConnections()));
         bootstrap.childHandler(new ChannelInitializer<SocketChannel>() {
             @Override
             protected void initChannel(SocketChannel ch) throws Exception {
                 System.out.println("初始化provider过程");
+                ByteBuf delimiter = Unpooled.copiedBuffer(DEFAULT_DECODE_CHAR.getBytes());
+                ch.pipeline().addLast(new DelimiterBasedFrameDecoder(serverConfig.getMaxServerRequestData(), delimiter));
                 ch.pipeline().addLast(new RpcEncoder());
                 ch.pipeline().addLast(new RpcDecoder());
                 // 这里面需要注意出现堵塞的情况发生，建议将核心业务内容分配给业务线程池处理
@@ -254,6 +276,7 @@ public class Server {
         SERVER_CHANNEL_DISPATCHER.startDataConsume();
         bootstrap.bind(serverConfig.getServerPort()).sync();
         IS_STARTED = true;
+        log.info("[startApplication] server is started!");
     }
 
     /**

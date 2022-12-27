@@ -1,6 +1,10 @@
 package org.idea.irpc.framework.core.client;
 
 import com.alibaba.fastjson.JSON;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
+import io.netty.channel.Channel;
+import io.netty.handler.codec.DelimiterBasedFrameDecoder;
 import org.idea.irpc.framework.core.common.event.IRpcListenerLoader;
 import org.idea.irpc.framework.core.common.protocol.RpcDecoder;
 import org.idea.irpc.framework.core.common.protocol.RpcEncoder;
@@ -18,32 +22,18 @@ import org.idea.irpc.framework.core.common.utils.CommonUtils;
 import org.idea.irpc.framework.core.config.PropertiesBootstrap;
 import org.idea.irpc.framework.core.filter.IClientFilter;
 import org.idea.irpc.framework.core.filter.client.ClientFilterChain;
-import org.idea.irpc.framework.core.filter.client.ClientLogFilterImpl;
-import org.idea.irpc.framework.core.filter.client.DirectInvokeFilterImpl;
-import org.idea.irpc.framework.core.filter.client.GroupFilterImpl;
 import org.idea.irpc.framework.core.proxy.ProxyFactory;
-import org.idea.irpc.framework.core.proxy.javassist.JavassistProxyFactory;
-import org.idea.irpc.framework.core.proxy.jdk.JDKProxyFactory;
 import org.idea.irpc.framework.core.registy.RegistryService;
 import org.idea.irpc.framework.core.registy.URL;
 import org.idea.irpc.framework.core.registy.zookeeper.AbstractRegister;
-import org.idea.irpc.framework.core.registy.zookeeper.ZookeeperRegister;
 import org.idea.irpc.framework.core.router.IRouter;
-import org.idea.irpc.framework.core.router.RandomRouterImpl;
-import org.idea.irpc.framework.core.router.RotateRouterImpl;
 import org.idea.irpc.framework.core.serialize.SerializeFactory;
-import org.idea.irpc.framework.core.serialize.fastjson.FastJsonSerializeFactory;
-import org.idea.irpc.framework.core.serialize.hessian.HessianSerializeFactory;
-import org.idea.irpc.framework.core.serialize.jdk.JdkSerializeFactory;
-import org.idea.irpc.framework.core.serialize.kryo.KryoSerializeFactory;
 import org.idea.irpc.framework.interfaces.DataService;
 import org.idea.irpc.framework.core.config.ClientConfig;
-
 import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-
 import static org.idea.irpc.framework.core.common.cache.CommonClientCache.*;
 import static org.idea.irpc.framework.core.common.constants.RpcConstants.*;
 import static org.idea.irpc.framework.core.spi.ExtensionLoader.EXTENSION_LOADER_CLASS_CACHE;
@@ -188,6 +178,9 @@ public class Client {
         bootstrap.channel(NioSocketChannel.class);
         bootstrap.handler(new ChannelInitializer<SocketChannel>() {
             protected void initChannel(SocketChannel channel) throws Exception {
+                // 尾部加入分隔符号
+                ByteBuf delimiter = Unpooled.copiedBuffer(DEFAULT_DECODE_CHAR.getBytes());
+                channel.pipeline().addLast(new DelimiterBasedFrameDecoder(clientConfig.getMaxServerRespDataSize(), delimiter));
                 // 管道中初始化了解码器、编码器、客户端相应类
                 channel.pipeline().addLast(new RpcEncoder());
                 channel.pipeline().addLast(new RpcDecoder());
@@ -324,12 +317,18 @@ public class Client {
                     // 将RpcInvocation封装到RpcProtocol对象中，发送给服务端，这里正好对应了ServerHandler
 //                    String json = JSON.toJSONString(data);
 //                    RpcProtocol rpcProtocol = new RpcProtocol(json.getBytes());
-                    RpcProtocol rpcProtocol = new RpcProtocol(CLIENT_SERIALIZE_FACTORY.serialize(data));
                     ChannelFuture channelFuture = ConnectionHandler.getChannelFuture(data);
-                    // netty的通道负责发送数据到服务端
-                    channelFuture.channel().writeAndFlush(rpcProtocol);
+                    if (channelFuture != null) {
+                        Channel channel = channelFuture.channel();
+                        // 如果出现服务端中断情况需要兼容
+                        if (channel.isOpen()) {
+                            RpcProtocol rpcProtocol = new RpcProtocol(CLIENT_SERIALIZE_FACTORY.serialize(data));
+                            // netty的通道负责发送数据到服务端
+                            channel.writeAndFlush(rpcProtocol);
+                        }
+                    }
                 } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
+                    log.error("[AsyncSendJob] e is ",e);
                 }
             }
         }

@@ -28,6 +28,10 @@ public class ClientHandler extends ChannelInboundHandlerAdapter {
 //        RpcInvocation rpcInvocation = JSON.parseObject(json, RpcInvocation.class);
         RpcInvocation rpcInvocation = CLIENT_SERIALIZE_FACTORY.deserialize(content, RpcInvocation.class);
 
+        if (rpcInvocation.getE() != null) {
+            rpcInvocation.getE().printStackTrace();
+        }
+
         // 如果单纯异步模式的话，响应map集合中不会存在映射值
         Object r = rpcInvocation.getAttachments().get("async");
         if (r != null && Boolean.valueOf(String.valueOf(r))) {

@@ -21,6 +21,8 @@ public class RpcInvocation {
     private String uuid;
     private Object response;
     private Map<String, Object> attachments = new ConcurrentHashMap<>();
-
-
+    // 记录服务端抛出的异常信息
+    private Throwable e;
+    // 重试次数
+    private int retry;
 }
