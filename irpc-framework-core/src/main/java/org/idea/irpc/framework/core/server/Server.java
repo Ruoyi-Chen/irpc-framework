@@ -104,7 +104,7 @@ public class Server {
         server.startApplication();
     }
 
-    private void exportService(ServiceWrapper serviceWrapper) {
+    public void exportService(ServiceWrapper serviceWrapper) {
         Object serviceBean = serviceWrapper.getServiceObj();
         if (serviceBean.getClass().getInterfaces().length == 0) {
             throw new RuntimeException("service must had interfaces!");
@@ -147,7 +147,7 @@ public class Server {
     }
 
 
-    private void initServerConfig() throws IOException, ClassNotFoundException, InstantiationException, IllegalAccessException {
+    public void initServerConfig() throws IOException, ClassNotFoundException, InstantiationException, IllegalAccessException {
         ServerConfig serverConfig = PropertiesBootstrap.loadServerConfigFromLocal();
         this.setServerConfig(serverConfig);
         SERVER_CONFIG = serverConfig;
@@ -244,7 +244,7 @@ public class Server {
      * <p>
      * ChannelOptions: https://netty.io/4.1/api/io/netty/channel/ChannelOption.html
      */
-    private void startApplication() throws InterruptedException {
+    public void startApplication() throws InterruptedException {
         bossGroup = new NioEventLoopGroup();
         workerGroup = new NioEventLoopGroup();
         ServerBootstrap bootstrap = new ServerBootstrap();
@@ -282,7 +282,7 @@ public class Server {
     /**
      * 为了将服务端的具体服务都暴露到注册中心，方便客户端进行调用。
      */
-    private void batchExportUrl() {
+    public void batchExportUrl() {
         Thread task = new Thread(new Runnable() {
             @Override
             public void run() {

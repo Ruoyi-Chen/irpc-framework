@@ -17,4 +17,8 @@ public interface DataService {
      * @return
      */
     List<String> getList();
+
+    void testError();
+
+    String testErrorV2();
 }

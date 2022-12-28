@@ -172,7 +172,7 @@ public class Client {
 //        CLIENT_FILTER_CHAIN = clientFilterChain;
     }
 
-    private RpcReference initClientApplication() throws IOException, ClassNotFoundException, InstantiationException, IllegalAccessException {
+    public RpcReference initClientApplication() throws IOException, ClassNotFoundException, InstantiationException, IllegalAccessException {
         EventLoopGroup clientGroup = new NioEventLoopGroup();
         bootstrap.group(clientGroup);
         bootstrap.channel(NioSocketChannel.class);
@@ -213,7 +213,7 @@ public class Client {
     /**
      * 开始和各个provider建立连接
      */
-    private void doConnectServer() {
+    public void doConnectServer() {
         for (URL providerURL : SUBSCRIBE_SERVICE_LIST) {
             List<String> providerIps = ABSTRACT_REGISTER.getProviderIps(providerURL.getServiceName());
             for (String providerIp : providerIps) {
@@ -246,7 +246,7 @@ public class Client {
      *
      * @param serviceBean
      */
-    private void doSubscribeService(Class serviceBean) {
+    public void doSubscribeService(Class serviceBean) {
         if (ABSTRACT_REGISTER == null) {
             try {
                 EXTENSION_LOADER.loadExtension(RegistryService.class);
@@ -296,7 +296,7 @@ public class Client {
      *
      * @param
      */
-    private void startClient() {
+    public void startClient() {
         Thread asyncSendJob = new Thread(new AsyncSendJob());
         asyncSendJob.start();
     }

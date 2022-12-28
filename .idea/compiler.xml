@@ -4,6 +4,7 @@
     <excludeFromCompile>
       <directory url="file://$PROJECT_DIR$/src/main/resources/archetype-resources" includeSubdirectories="true" />
       <directory url="file://$PROJECT_DIR$/docs/archetype-resources" includeSubdirectories="true" />
+      <directory url="file://$PROJECT_DIR$/irpc-framework-spring-starter/src/main/resources/archetype-resources" includeSubdirectories="true" />
     </excludeFromCompile>
     <annotationProcessing>
       <profile default="true" name="Default" enabled="true" />
@@ -12,8 +13,11 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <module name="irpc-framework-interface" />
-        <module name="irpc-framework-jmh" />
         <module name="irpc-framework-core" />
+        <module name="irpc-framework-spring-starter" />
+        <module name="irpc-framework-jmh" />
+        <module name="irpc-framework-provider" />
+        <module name="irpc-framework-consumer" />
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
@@ -23,6 +27,7 @@
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
       <module name="CherryRPC" options="-parameters" />
+      <module name="irpc-framework-provider" options="" />
     </option>
   </component>
 </project>

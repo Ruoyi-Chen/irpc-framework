@@ -8,6 +8,8 @@
         <option value="$PROJECT_DIR$/predemo/pom.xml" />
         <option value="$PROJECT_DIR$/irpc-framework-interface/pom.xml" />
         <option value="$PROJECT_DIR$/irpc-framework-jmh/pom.xml" />
+        <option value="$PROJECT_DIR$/irpc-framework-provider/pom.xml" />
+        <option value="$PROJECT_DIR$/irpc-framework-consumer/pom.xml" />
       </list>
     </option>
   </component>

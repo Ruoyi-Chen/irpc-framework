@@ -1,0 +1,3 @@
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+org.idea.irpc.framework.spring.starter.config.IRpcServerAutoConfiguration,\
+org.idea.irpc.framework.spring.starter.config.IRpcClientAutoConfiguration
